@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"example.com/hello"
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"kpukbot/hello"
 )
 
 func main() {

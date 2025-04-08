@@ -1,4 +1,4 @@
-module example.com/hello
+module kpukbot/hello
 
 // minimum version
 go 1.19
@@ -8,6 +8,7 @@ require github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 require (
 	cloud.google.com/go/functions v1.0.0 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.6.1 // indirect
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
