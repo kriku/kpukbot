@@ -1,4 +1,4 @@
-module kpukbot/hello
+module krikun.org/hello
 
 // minimum version
 go 1.19

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"kpukbot/hello"
+	"krikun.org/hello"
 )
 
 func main() {
