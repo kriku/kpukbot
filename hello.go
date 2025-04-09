@@ -68,7 +68,16 @@ func HelloWorld(res http.ResponseWriter, req *http.Request) {
 
 	response := generateContent(update.Message.Text)
 
-	bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, response))
+	message := tgbotapi.MessageConfig{
+		BaseChat: tgbotapi.BaseChat{
+			ChatID:           update.Message.Chat.ID,
+			ReplyToMessageID: 0,
+		},
+		Text:      response,
+		ParseMode: tgbotapi.ModeMarkdownV2,
+	}
+
+	bot.Send(message)
 
 	res.WriteHeader(http.StatusOK)
 	res.Write([]byte("ok"))
