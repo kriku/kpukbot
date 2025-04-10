@@ -2,12 +2,15 @@ package hello
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
+
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
@@ -41,44 +44,46 @@ func generateContent(prompt string) string {
 	return readResponse(resp)
 }
 
-func HelloWorld(res http.ResponseWriter, req *http.Request) {
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
+func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
+	b, err := bot.New(os.Getenv("TELEGRAM_API_TOKEN"))
 	if err != nil {
 		panic(err)
 	}
 
-	bot.Debug = true
+	update := models.Update{}
 
-	log.Printf("Authorized on account %s", bot.Self.UserName)
-
-	info, err := bot.GetWebhookInfo()
+	err = json.NewDecoder(req.Body).Decode(&update)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error parsing incoming webhook update: %s", err)
 	}
 
-	if info.LastErrorDate != 0 {
-		log.Printf("Telegram callback failed: %s", info.LastErrorMessage)
-	}
-
-	update, err := bot.HandleUpdate(req)
-	if err != nil {
-		log.Printf("Error handling update: %s", err)
-		return
-	}
-
-	response := generateContent(update.Message.Text)
-
-	message := tgbotapi.MessageConfig{
-		BaseChat: tgbotapi.BaseChat{
-			ChatID:           update.Message.Chat.ID,
-			ReplyToMessageID: 0,
-		},
-		Text:      response,
-		ParseMode: tgbotapi.ModeMarkdownV2,
-	}
-
-	bot.Send(message)
+	HandleUpdate(b, &update)
 
 	res.WriteHeader(http.StatusOK)
 	res.Write([]byte("ok"))
+}
+
+func HandleUpdate(b *bot.Bot, update *models.Update) {
+	ctx := context.Background()
+
+	log.Printf("Handle new message: [%s] %s", update.Message.From.Username, update.Message.Text)
+
+	b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID: update.Message.Chat.ID,
+		Action: models.ChatActionTyping,
+	})
+
+	response := generateContent(update.Message.Text)
+
+	log.Printf("Generated content: %s", response)
+
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      bot.EscapeMarkdown(response),
+		ParseMode: models.ParseModeMarkdown,
+	})
+
+	if err != nil {
+		log.Printf("Error sending message: %s", err)
+	}
 }
