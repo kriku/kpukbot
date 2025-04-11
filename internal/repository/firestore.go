@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strconv"
 
 	"cloud.google.com/go/firestore"
 	"github.com/kriku/kpukbot/internal/config"
@@ -39,13 +40,13 @@ func NewFirestoreRepository(c *config.Config) (Repository, error) {
 
 // SaveUser stores user data in Firestore
 func (r *FirestoreRepository) SaveUser(u models.User) error {
-	_, err := r.client.Collection("users").Doc(string(u.ID)).Set(r.ctx, u)
+	_, err := r.client.Collection("users").Doc(strconv.FormatInt(u.ID, 10)).Set(r.ctx, u)
 	return err
 }
 
 // GetUser retrieves user data from Firestore
 func (r *FirestoreRepository) GetUser(userID int64) (*models.User, error) {
-	doc, err := r.client.Collection("users").Doc(string(userID)).Get(r.ctx)
+	doc, err := r.client.Collection("users").Doc(strconv.FormatInt(userID, 10)).Get(r.ctx)
 
 	if err != nil {
 		return nil, err
@@ -61,13 +62,13 @@ func (r *FirestoreRepository) GetUser(userID int64) (*models.User, error) {
 
 // SaveThread stores chat data in Firestore
 func (r *FirestoreRepository) SaveThread(t models.Thread) error {
-	_, err := r.client.Collection(CollectionThreads).Doc(string(t.ID)).Set(r.ctx, t)
+	_, err := r.client.Collection(CollectionThreads).Doc(strconv.FormatInt(t.ID, 10)).Set(r.ctx, t)
 	return err
 }
 
 // GetThread retrieves chat data from Firestore
 func (r *FirestoreRepository) GetThread(threadID int64) (*models.Thread, error) {
-	doc, err := r.client.Collection(CollectionThreads).Doc(string(threadID)).Get(r.ctx)
+	doc, err := r.client.Collection(CollectionThreads).Doc(strconv.FormatInt(threadID, 10)).Get(r.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +83,13 @@ func (r *FirestoreRepository) GetThread(threadID int64) (*models.Thread, error) 
 
 // SaveMessage stores message data in Firestore
 func (r *FirestoreRepository) SaveMessage(threadId int64, m models.Message) error {
-	_, err := r.client.Collection(CollectionThreads).Doc(string(threadId)).Collection("messages").Doc(string(m.ID)).Set(r.ctx, m)
+	_, err := r.client.Collection(CollectionThreads).Doc(strconv.FormatInt(threadId, 10)).Collection("messages").Doc(string(m.ID)).Set(r.ctx, m)
 	return err
 }
 
 // GetMessages retrieves message history from Firestore
 func (r *FirestoreRepository) GetMessages(threadId int64) ([]*models.Message, error) {
-	query := r.client.Collection(CollectionThreads).Doc(string(threadId)).Collection("messages")
+	query := r.client.Collection(CollectionThreads).Doc(strconv.FormatInt(threadId, 10)).Collection("messages")
 
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
