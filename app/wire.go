@@ -8,6 +8,7 @@ import (
 
 	"github.com/kriku/kpukbot/internal/config"
 	"github.com/kriku/kpukbot/internal/handlers"
+	"github.com/kriku/kpukbot/internal/repository"
 	"github.com/kriku/kpukbot/internal/services"
 )
 
@@ -16,6 +17,7 @@ var baseSet = wire.NewSet(
 	handlers.NewWebhookHandler,
 	services.NewGeminiService,
 	services.NewTelegramService,
+	repository.NewFirestoreRepository,
 	wire.Bind(new(handlers.TelegramUpdateHandler), new(*services.TelegramService)),
 
 	NewApp,

@@ -30,12 +30,7 @@ func main() {
 		},
 	)
 
+	log.Println("Starting Telegram bot...")
+
 	a.TelegramService.Bot.Start(ctx)
 }
-
-// func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-// 	b.SendMessage(ctx, &bot.SendMessageParams{
-// 		ChatID: update.Message.Chat.ID,
-// 		Text:   update.Message.Text,
-// 	})
-// }

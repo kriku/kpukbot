@@ -10,6 +10,27 @@ Google Cloud Run Function is called by a Telegram Webhook with updates from the 
 
 ### Local run
 
+#### Prerequisites
+
+``` sh
+GEMINI_API_KEY=XXX
+TELEGRAM_API_TOKEN=XXX
+CLOUD_PROJECT_ID=XXX
+FIRESTORE_PROJECT_ID=(default)
+GOOGLE_APPLICATION_CREDENTIALS=XXX
+FIRESTORE_EMULATOR_HOST=[::1]:8198
+USE_FIRESTORE_EMULATOR=true
+```
+
+To test this bot locally, you need to have the following installed:
+- gcloud SDK (https://cloud.google.com/sdk/docs/install)
+
+https://cloud.google.com/firestore/docs/emulator
+
+``` sh
+gcloud components install cloud-firestore-emulator
+```
+
 Run Locally in polling mode with Go installed:
 ```
 go run cmd/main.go

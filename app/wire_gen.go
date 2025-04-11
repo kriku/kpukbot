@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/kriku/kpukbot/internal/config"
 	"github.com/kriku/kpukbot/internal/handlers"
+	"github.com/kriku/kpukbot/internal/repository"
 	"github.com/kriku/kpukbot/internal/services"
 )
 
@@ -21,15 +22,19 @@ func InitAppLocal() (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	telegramService, err := services.NewTelegramService(configConfig, aiServiceInterface)
+	repositoryRepository, err := repository.NewFirestoreRepository(configConfig)
+	if err != nil {
+		return App{}, err
+	}
+	telegramService, err := services.NewTelegramService(configConfig, aiServiceInterface, repositoryRepository)
 	if err != nil {
 		return App{}, err
 	}
 	webhookHandler := handlers.NewWebhookHandler(telegramService)
-	app := NewApp(telegramService, aiServiceInterface, webhookHandler)
+	app := NewApp(telegramService, aiServiceInterface, webhookHandler, repositoryRepository)
 	return app, nil
 }
 
 // wire.go:
 
-var baseSet = wire.NewSet(config.NewConfig, handlers.NewWebhookHandler, services.NewGeminiService, services.NewTelegramService, wire.Bind(new(handlers.TelegramUpdateHandler), new(*services.TelegramService)), NewApp)
+var baseSet = wire.NewSet(config.NewConfig, handlers.NewWebhookHandler, services.NewGeminiService, services.NewTelegramService, repository.NewFirestoreRepository, wire.Bind(new(handlers.TelegramUpdateHandler), new(*services.TelegramService)), NewApp)
