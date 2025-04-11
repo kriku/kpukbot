@@ -30,7 +30,11 @@ func NewTelegramService(c *config.Config, aiService AIServiceInterface) (*Telegr
 
 // HandleUpdate processes a Telegram update
 func (s *TelegramService) HandleUpdate(ctx context.Context, update *models.Update) {
-	log.Printf("Handle new message: [%s] %s", update.Message.From.Username, update.Message.Text)
+	if update.Message.From != nil {
+		log.Printf("Handle new message: [%s] %s", update.Message.From.Username, update.Message.Text)
+	} else {
+		log.Printf("Handle new message in chat: [%s] %s", update.Message.Chat.Title, update.Message.Text)
+	}
 
 	_, err := s.Bot.SendChatAction(ctx, &bot.SendChatActionParams{
 		ChatID: update.Message.Chat.ID,
