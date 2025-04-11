@@ -41,6 +41,8 @@ func (h *WebhookHandler) HandleTelegramWebhook(res http.ResponseWriter, req *htt
 		return
 	}
 
+	log.Printf("Received update: %v", update)
+
 	h.telegramHandler.HandleUpdate(ctx, &update)
 
 	res.WriteHeader(http.StatusOK)
