@@ -1,22 +1,41 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"os/signal"
+	"regexp"
 
-	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"krikun.org/hello"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
+	"github.com/kriku/kpukbot/app"
 )
 
+// Send any text message to the bot after the bot has been started
 func main() {
-	funcframework.RegisterHTTPFunction("/", hello.HandleTelegramWebhook)
-	// Use PORT environment variable, or default to 8080.
-	port := "8080"
-	if envPort := os.Getenv("PORT"); envPort != "" {
-		port = envPort
+	a, err := app.InitAppLocal()
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
 	}
 
-	if err := funcframework.Start(port); err != nil {
-		log.Fatalf("funcframework.Start: %v\n", err)
-	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	a.TelegramService.Bot.RegisterHandlerRegexp(
+		bot.HandlerTypeMessageText,
+		regexp.MustCompile(".*"),
+		func(ctx context.Context, _ *bot.Bot, update *models.Update) {
+			a.TelegramService.HandleUpdate(ctx, update)
+		},
+	)
+
+	a.TelegramService.Bot.Start(ctx)
 }
+
+// func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
+// 	b.SendMessage(ctx, &bot.SendMessageParams{
+// 		ChatID: update.Message.Chat.ID,
+// 		Text:   update.Message.Text,
+// 	})
+// }
