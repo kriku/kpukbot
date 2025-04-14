@@ -14,10 +14,9 @@ type Config struct {
 
 // FirestoreConfig holds the configuration for Firebase/Firestore
 type FirestoreConfig struct {
-	ProjectID       string
-	CredentialsFile string
-	EmulatorHost    string // For local development
-	UseEmulator     bool
+	ProjectID    string
+	EmulatorHost string // For local development
+	UseEmulator  bool
 }
 
 // NewConfig loads configuration from environment variables
