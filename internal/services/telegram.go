@@ -38,9 +38,9 @@ func NewTelegramService(
 
 // HandleUpdate processes a Telegram update
 func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Update) {
-	if update.Message.ReplyToMessage != nil {
-		log.Printf("Message is a reply to message ID: %d", update.Message.ReplyToMessage.ID)
-
+	if update.Message == nil {
+		log.Printf("Update contains no message")
+		return
 	}
 
 	if update.Message.From == nil {
@@ -48,39 +48,53 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 		return
 	}
 
+	if update.Message.ReplyToMessage != nil {
+		log.Printf("Message is a reply to message ID: %d", update.Message.ReplyToMessage.ID)
+	}
+
 	log.Printf("Handle new message: [%s] %s", update.Message.From.Username, update.Message.Text)
 
-	user, err := s.Repository.GetUser(update.Message.From.ID)
+	user := s.processUser(update.Message.From)
+	thread := s.processThread(update.Message, user)
+	s.sendResponse(ctx, update.Message.Chat.ID, thread)
+}
 
+// processUser gets or creates a user based on the message sender
+func (s *TelegramService) processUser(from *tgmodels.User) *models.User {
+	user, err := s.Repository.GetUser(from.ID)
 	if err != nil {
 		log.Printf("Error getting user: %s", err)
 		user = &models.User{
-			ID:        update.Message.From.ID,
-			Username:  update.Message.From.Username,
-			FirstName: update.Message.From.FirstName,
-			LastName:  update.Message.From.LastName,
+			ID:        from.ID,
+			Username:  from.Username,
+			FirstName: from.FirstName,
+			LastName:  from.LastName,
 		}
 		err = s.Repository.SaveUser(*user)
 		if err != nil {
 			log.Printf("Error saving user: %s", err)
 		} else {
-			log.Printf("User saved: %s", update.Message.From.Username)
+			log.Printf("User saved: %s", from.Username)
 		}
 	}
+	return user
+}
 
-	thread, err := s.Repository.GetThread(update.Message.Chat.ID)
+// processThread gets or creates a thread and adds the current message to it
+func (s *TelegramService) processThread(message *tgmodels.Message, user *models.User) *models.Thread {
+	thread, err := s.Repository.GetThread(message.Chat.ID)
 
 	if err != nil {
 		log.Printf("Error getting thread: %s", err)
 
 		thread = &models.Thread{
-			ID:     int64(update.Message.Chat.ID),
-			ChatID: update.Message.Chat.ID,
+			ID:     int64(message.Chat.ID),
+			ChatID: message.Chat.ID,
 			Messages: []models.Message{
 				{
-					ID:      int64(update.Message.ID),
+					ID:      int64(message.ID),
 					Sender:  *user,
-					Content: update.Message.Text,
+					Content: message.Text,
 				},
 			},
 		}
@@ -95,9 +109,9 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 		log.Printf("Thread already exists: %v", thread.ID)
 
 		thread.Messages = append(thread.Messages, models.Message{
-			ID:      int64(update.Message.ID),
+			ID:      int64(message.ID),
 			Sender:  *user,
-			Content: update.Message.Text,
+			Content: message.Text,
 		})
 
 		err = s.Repository.SaveThread(*thread)
@@ -108,8 +122,13 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 		}
 	}
 
-	_, err = s.Bot.SendChatAction(ctx, &bot.SendChatActionParams{
-		ChatID: update.Message.Chat.ID,
+	return thread
+}
+
+// sendResponse generates AI content and sends it as a response
+func (s *TelegramService) sendResponse(ctx context.Context, chatID int64, thread *models.Thread) {
+	_, err := s.Bot.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID: chatID,
 		Action: tgmodels.ChatActionTyping,
 	})
 
@@ -117,11 +136,7 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 		log.Printf("Error sending chat typing: %s", err)
 	}
 
-	allMessages := ""
-	for _, msg := range thread.Messages {
-		allMessages += msg.Content + "\n"
-	}
-
+	allMessages := s.formatMessagesForAI(thread)
 	log.Printf("All messages: %s", allMessages)
 
 	response, err := s.AIService.GenerateContent(ctx, allMessages)
@@ -133,7 +148,7 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 	log.Printf("Generated content: %s", response)
 
 	_, err = s.Bot.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
+		ChatID:    chatID,
 		Text:      bot.EscapeMarkdown(response),
 		ParseMode: tgmodels.ParseModeMarkdown,
 	})
@@ -141,4 +156,13 @@ func (s *TelegramService) HandleUpdate(ctx context.Context, update *tgmodels.Upd
 	if err != nil {
 		log.Printf("Error sending message: %s", err)
 	}
+}
+
+// formatMessagesForAI concatenates all messages in a thread for AI processing
+func (s *TelegramService) formatMessagesForAI(thread *models.Thread) string {
+	allMessages := ""
+	for _, msg := range thread.Messages {
+		allMessages += msg.Content + "\n"
+	}
+	return allMessages
 }
