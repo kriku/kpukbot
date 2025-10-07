@@ -23,7 +23,7 @@ type FirestoreConfig struct {
 func NewConfig() *Config {
 	modelName := os.Getenv("GEMINI_MODEL")
 	if modelName == "" {
-		modelName = "gemini-1.5-flash" // Default model
+		modelName = "gemini-2.5-flash" // Default model
 	}
 
 	// Load Firestore configuration
