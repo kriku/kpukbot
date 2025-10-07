@@ -13,7 +13,6 @@ import (
 	"github.com/kriku/kpukbot/internal/handlers"
 	"github.com/kriku/kpukbot/internal/logger"
 	"github.com/kriku/kpukbot/internal/repository/messages"
-	messages2 "github.com/kriku/kpukbot/internal/services/messages"
 )
 
 // Injectors from wire.go:
@@ -21,20 +20,19 @@ import (
 func InitAppLocal() (App, error) {
 	slogLogger := logger.NewLogger()
 	configConfig := config.NewConfig()
-	handlerFunc := handlers.NewDefaultHandler(slogLogger)
-	messengerClient, err := telegram.NewTelegramClient(configConfig, handlerFunc)
-	if err != nil {
-		return App{}, err
-	}
 	messagesRepository, err := messages.NewFirestoreRepository(configConfig)
 	if err != nil {
 		return App{}, err
 	}
-	telegramMessagesService := messages2.NewTelegramMessagesService(messagesRepository, slogLogger)
-	app := NewApp(slogLogger, messengerClient, messagesRepository, telegramMessagesService)
+	handlerFunc := handlers.NewDefaultHandler(slogLogger, messagesRepository)
+	messengerClient, err := telegram.NewTelegramClient(configConfig, handlerFunc)
+	if err != nil {
+		return App{}, err
+	}
+	app := NewApp(slogLogger, messengerClient, messagesRepository)
 	return app, nil
 }
 
 // wire.go:
 
-var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, handlers.NewDefaultHandler, telegram.NewTelegramClient, messages2.NewTelegramMessagesService, messages.NewFirestoreRepository, NewApp)
+var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, handlers.NewDefaultHandler, telegram.NewTelegramClient, messages.NewFirestoreRepository, NewApp)

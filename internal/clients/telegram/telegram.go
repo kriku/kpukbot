@@ -68,7 +68,8 @@ func (t *TelegramClient) HandleWebhook(res http.ResponseWriter, req *http.Reques
 
 	json.NewDecoder(req.Body).Decode(&update)
 
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 	t.bot.ProcessUpdate(ctx, &update)
 }
 

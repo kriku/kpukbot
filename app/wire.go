@@ -11,7 +11,6 @@ import (
 	"github.com/kriku/kpukbot/internal/handlers"
 	"github.com/kriku/kpukbot/internal/logger"
 	repositories "github.com/kriku/kpukbot/internal/repository/messages"
-	services "github.com/kriku/kpukbot/internal/services/messages"
 )
 
 var baseSet = wire.NewSet(
@@ -19,7 +18,6 @@ var baseSet = wire.NewSet(
 	logger.NewLogger,
 	handlers.NewDefaultHandler,
 	clients.NewTelegramClient,
-	services.NewTelegramMessagesService,
 	repositories.NewFirestoreRepository,
 
 	NewApp,

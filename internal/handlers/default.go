@@ -6,13 +6,18 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	messages "github.com/kriku/kpukbot/internal/repository/messages"
 )
 
-type DefaultHandler bot.HandlerFunc
+type DefaultHandler struct {
+	l *slog.Logger
+	m messages.MessagesRepository
+}
 
-func NewDefaultHandler(logger *slog.Logger) bot.HandlerFunc {
+func NewDefaultHandler(l *slog.Logger, m messages.MessagesRepository) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		logger.Info("Received update: %v", update)
+		l.Info("Received update: %v", update)
 
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
