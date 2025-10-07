@@ -13,5 +13,5 @@ func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
 
-	a.WebhookHandler.HandleTelegramWebhook(res, req)
+	a.MessengerClient.HandleWebhook(res, req)
 }

@@ -8,33 +8,33 @@ package app
 
 import (
 	"github.com/google/wire"
+	"github.com/kriku/kpukbot/internal/clients/telegram"
 	"github.com/kriku/kpukbot/internal/config"
 	"github.com/kriku/kpukbot/internal/handlers"
-	"github.com/kriku/kpukbot/internal/repository"
-	"github.com/kriku/kpukbot/internal/services"
+	"github.com/kriku/kpukbot/internal/logger"
+	"github.com/kriku/kpukbot/internal/repository/messages"
+	messages2 "github.com/kriku/kpukbot/internal/services/messages"
 )
 
 // Injectors from wire.go:
 
 func InitAppLocal() (App, error) {
+	slogLogger := logger.NewLogger()
 	configConfig := config.NewConfig()
-	aiServiceInterface, err := services.NewGeminiService(configConfig)
+	handlerFunc := handlers.NewDefaultHandler(slogLogger)
+	messengerClient, err := telegram.NewTelegramClient(configConfig, handlerFunc)
 	if err != nil {
 		return App{}, err
 	}
-	repositoryRepository, err := repository.NewFirestoreRepository(configConfig)
+	messagesRepository, err := messages.NewFirestoreRepository(configConfig)
 	if err != nil {
 		return App{}, err
 	}
-	telegramService, err := services.NewTelegramService(configConfig, aiServiceInterface, repositoryRepository)
-	if err != nil {
-		return App{}, err
-	}
-	webhookHandler := handlers.NewWebhookHandler(telegramService)
-	app := NewApp(telegramService, aiServiceInterface, webhookHandler, repositoryRepository)
+	telegramMessagesService := messages2.NewTelegramMessagesService(messagesRepository, slogLogger)
+	app := NewApp(slogLogger, messengerClient, messagesRepository, telegramMessagesService)
 	return app, nil
 }
 
 // wire.go:
 
-var baseSet = wire.NewSet(config.NewConfig, handlers.NewWebhookHandler, services.NewGeminiService, services.NewTelegramService, repository.NewFirestoreRepository, wire.Bind(new(handlers.TelegramUpdateHandler), new(*services.TelegramService)), NewApp)
+var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, handlers.NewDefaultHandler, telegram.NewTelegramClient, messages2.NewTelegramMessagesService, messages.NewFirestoreRepository, NewApp)
