@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/signal"
@@ -63,7 +64,12 @@ func (t *TelegramClient) SendMessage(chatID int64, text string) (*models.Message
 }
 
 func (t *TelegramClient) HandleWebhook(res http.ResponseWriter, req *http.Request) {
-	t.bot.WebhookHandler()(res, req)
+	update := models.Update{}
+
+	json.NewDecoder(req.Body).Decode(&update)
+
+	ctx := context.Background()
+	t.bot.ProcessUpdate(ctx, &update)
 }
 
 func (t *TelegramClient) Close() error {
