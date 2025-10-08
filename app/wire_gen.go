@@ -7,12 +7,22 @@
 package app
 
 import (
+	"cloud.google.com/go/firestore"
+	"context"
+	"github.com/go-telegram/bot"
 	"github.com/google/wire"
+	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/clients/telegram"
 	"github.com/kriku/kpukbot/internal/config"
 	"github.com/kriku/kpukbot/internal/handlers"
 	"github.com/kriku/kpukbot/internal/logger"
 	"github.com/kriku/kpukbot/internal/repository/messages"
+	"github.com/kriku/kpukbot/internal/repository/threads"
+	"github.com/kriku/kpukbot/internal/services/orchestrator"
+	"github.com/kriku/kpukbot/internal/services/response"
+	"github.com/kriku/kpukbot/internal/services/threading"
+	"github.com/kriku/kpukbot/internal/strategies"
+	"log/slog"
 )
 
 // Injectors from wire.go:
@@ -20,19 +30,101 @@ import (
 func InitAppLocal() (App, error) {
 	slogLogger := logger.NewLogger()
 	configConfig := config.NewConfig()
-	messagesRepository, err := messages.NewFirestoreRepository(configConfig)
+	context := ProvideContext()
+	client, err := ProvideGeminiClient(context, configConfig, slogLogger)
 	if err != nil {
 		return App{}, err
 	}
-	handlerFunc := handlers.NewDefaultHandler(slogLogger, messagesRepository)
+	firestoreClient, err := NewFirestoreClient(configConfig)
+	if err != nil {
+		return App{}, err
+	}
+	threadsRepository := ProvideThreadsRepository(firestoreClient)
+	messagesRepository := ProvideMessagesRepository(firestoreClient)
+	classifierService := ProvideClassifierService(client, threadsRepository, messagesRepository, slogLogger)
+	v := ProvideStrategies(client, slogLogger)
+	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
+	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, slogLogger)
+	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
 	messengerClient, err := telegram.NewTelegramClient(configConfig, handlerFunc)
 	if err != nil {
 		return App{}, err
 	}
-	app := NewApp(slogLogger, messengerClient, messagesRepository)
+	app := NewApp(slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
 	return app, nil
 }
 
 // wire.go:
 
-var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, handlers.NewDefaultHandler, telegram.NewTelegramClient, messages.NewFirestoreRepository, NewApp)
+// ProvideContext provides a context
+func ProvideContext() context.Context {
+	return context.Background()
+}
+
+// ProvideGeminiClient provides a Gemini client
+func ProvideGeminiClient(ctx context.Context, cfg *config.Config, logger2 *slog.Logger) (gemini.Client, error) {
+	return gemini.NewGeminiClient(ctx, cfg.GeminiAPIKey, logger2)
+}
+
+// ProvideMessagesRepository provides a messages repository
+func ProvideMessagesRepository(client *firestore.Client) messages.MessagesRepository {
+	return messages.NewFirestoreMessagesRepository(client)
+}
+
+// ProvideThreadsRepository provides a threads repository
+func ProvideThreadsRepository(client *firestore.Client) threads.ThreadsRepository {
+	return threads.NewFirestoreThreadsRepository(client)
+}
+
+// ProvideStrategies provides all response strategies
+func ProvideStrategies(geminiClient gemini.Client, logger2 *slog.Logger) []strategies.ResponseStrategy {
+	return []strategies.ResponseStrategy{strategies.NewFactCheckerStrategy(geminiClient, logger2), strategies.NewAgreementStrategy(geminiClient, logger2), strategies.NewReminderStrategy(geminiClient, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+}
+
+// ProvideClassifierService provides the classifier service
+func ProvideClassifierService(
+	geminiClient gemini.Client,
+	threadsRepository threads.ThreadsRepository,
+	messagesRepository messages.MessagesRepository, logger2 *slog.Logger,
+) *threading.ClassifierService {
+	return threading.NewClassifierService(geminiClient, threadsRepository, messagesRepository, logger2)
+}
+
+// ProvideAnalyzerService provides the analyzer service
+func ProvideAnalyzerService(
+	geminiClient gemini.Client, strategies2 []strategies.ResponseStrategy, logger2 *slog.Logger,
+) *response.AnalyzerService {
+	return response.NewAnalyzerService(geminiClient, strategies2, logger2)
+}
+
+// ProvideOrchestratorService provides the orchestrator service
+func ProvideOrchestratorService(
+	classifier *threading.ClassifierService,
+	analyzer *response.AnalyzerService,
+	messagesRepository messages.MessagesRepository, logger2 *slog.Logger,
+) *orchestrator.OrchestratorService {
+
+	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, nil, logger2)
+}
+
+// ProvideOrchestratorHandler provides the orchestrator handler
+func ProvideOrchestratorHandler(
+	orch *orchestrator.OrchestratorService, logger2 *slog.Logger,
+) bot.HandlerFunc {
+	return handlers.NewOrchestratorHandler(orch, logger2)
+}
+
+var baseSet = wire.NewSet(config.NewConfig, ProvideContext, logger.NewLogger, NewFirestoreClient,
+
+	ProvideGeminiClient,
+
+	ProvideMessagesRepository,
+	ProvideThreadsRepository,
+
+	ProvideStrategies,
+	ProvideClassifierService,
+	ProvideAnalyzerService,
+	ProvideOrchestratorService,
+
+	ProvideOrchestratorHandler, telegram.NewTelegramClient, NewApp,
+)

@@ -5,8 +5,9 @@ import (
 	"log/slog"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	botModels "github.com/go-telegram/bot/models"
 
+	"github.com/kriku/kpukbot/internal/models"
 	messages "github.com/kriku/kpukbot/internal/repository/messages"
 )
 
@@ -16,8 +17,20 @@ type DefaultHandler struct {
 }
 
 func NewDefaultHandler(l *slog.Logger, m messages.MessagesRepository) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *botModels.Update) {
 		l.Info("Received update: %v", update)
+
+		message := models.NewMessageFromTelegramUpdate(update)
+
+		messages, err := m.GetMessages(ctx, message.ChatID)
+
+		if err != nil {
+			l.Error("Failed to get messages from DB: %v", err)
+			return
+		}
+
+		l.Info("Total messages in DB: %d", len(messages))
+		m.SaveMessage(ctx, *message)
 
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
