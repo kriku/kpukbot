@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
+	"google.golang.org/genai"
 )
 
 type GeneralStrategy struct {
@@ -39,7 +39,7 @@ func (s *GeneralStrategy) ShouldRespond(ctx context.Context, thread *models.Thre
 func (s *GeneralStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
 	prompt := prompts.GeneralResponsePrompt(thread, messages, newMessage)
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "text/plain",
 	}
 

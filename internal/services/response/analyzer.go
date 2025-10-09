@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	"github.com/kriku/kpukbot/internal/strategies"
+	"google.golang.org/genai"
 )
 
 type AnalyzerService struct {
@@ -43,7 +43,7 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 
 	// First, use LLM to get general assessment
 	prompt := prompts.ResponseAnalysisPrompt(thread, messages, newMessage)
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,

@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
+	"google.golang.org/genai"
 )
 
 type FactCheckerStrategy struct {
@@ -49,7 +49,7 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 	// Use LLM to determine if fact-checking is needed
 	prompt := "Does this message contain factual claims that should be verified? Answer with JSON: {\"needs_checking\": true/false, \"confidence\": 0.0-1.0}\n\nMessage: " + newMessage.Text
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
@@ -93,7 +93,7 @@ func (s *FactCheckerStrategy) GenerateResponse(ctx context.Context, thread *mode
 
 	prompt := prompts.FactCheckingPrompt(contextBuilder.String(), newMessage.Text)
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,

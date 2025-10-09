@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/google/uuid"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
 	threadsRepo "github.com/kriku/kpukbot/internal/repository/threads"
+	"google.golang.org/genai"
 )
 
 type ClassifierService struct {
@@ -57,7 +57,7 @@ func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models
 	// Use LLM to classify the message
 	prompt := prompts.ThreadClassificationPrompt(message, threads)
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
@@ -149,7 +149,7 @@ func (s *ClassifierService) createNewThread(ctx context.Context, message *models
 	messages := []*models.Message{message}
 	prompt := prompts.ThreadSummaryPrompt(messages)
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
@@ -238,7 +238,7 @@ func (s *ClassifierService) updateThreadSummary(ctx context.Context, thread *mod
 
 	prompt := prompts.ThreadSummaryPrompt(messages)
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,

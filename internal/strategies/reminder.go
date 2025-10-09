@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
+	"google.golang.org/genai"
 )
 
 type ReminderStrategy struct {
@@ -51,7 +51,7 @@ func (s *ReminderStrategy) ShouldRespond(ctx context.Context, thread *models.Thr
 func (s *ReminderStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
 	prompt := prompts.ReminderPrompt(thread, append(messages, newMessage))
 
-	config := &genai.GenerationConfig{
+	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
