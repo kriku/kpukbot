@@ -44,6 +44,9 @@ func (s *GeneralStrategy) GenerateResponse(ctx context.Context, thread *models.T
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "General response", "response", response)
+
 	if err != nil {
 		return "", err
 	}

@@ -61,6 +61,9 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Fact checker response", "response", response)
+
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to analyze for fact-checking", "error", err)
 		return false, 0, err

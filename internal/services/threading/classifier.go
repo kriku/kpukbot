@@ -85,6 +85,9 @@ func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Analyzer classification response", "response", response)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to classify message: %w", err)
 	}
@@ -158,6 +161,9 @@ func (s *ClassifierService) createNewThread(ctx context.Context, message *models
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Analyzer create new thread response", "response", response)
+
 	if err != nil {
 		s.logger.WarnContext(ctx, "Failed to generate thread summary", "error", err)
 		// Use fallback
@@ -244,6 +250,9 @@ func (s *ClassifierService) updateThreadSummary(ctx context.Context, thread *mod
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Analyzer update thread summary response", "response", response)
+
 	if err != nil {
 		return err
 	}

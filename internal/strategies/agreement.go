@@ -73,6 +73,9 @@ func (s *AgreementStrategy) GenerateResponse(ctx context.Context, thread *models
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Agreement generate response", "response", response)
+
 	if err != nil {
 		return "", err
 	}

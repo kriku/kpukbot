@@ -57,6 +57,9 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Analyze and respond response", "response", response)
+
 	if err != nil {
 		s.logger.WarnContext(ctx, "Failed to get LLM analysis", "error", err)
 	}
