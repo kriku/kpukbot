@@ -49,7 +49,7 @@ func InitApp(ctx context.Context) (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	app := NewApp(ctx, slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
+	app := NewApp(slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
 	return app, nil
 }
 
