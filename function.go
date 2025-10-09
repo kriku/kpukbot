@@ -10,7 +10,7 @@ import (
 )
 
 func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	a, err := app.InitApp(ctx)
