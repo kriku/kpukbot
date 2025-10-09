@@ -40,7 +40,8 @@ func (s *GeneralStrategy) GenerateResponse(ctx context.Context, thread *models.T
 	prompt := prompts.GeneralResponsePrompt(thread, messages, newMessage)
 
 	config := &genai.GenerateContentConfig{
-		ResponseMIMEType: "text/plain",
+		SystemInstruction: genai.NewContentFromText("The maximum length of the answer is 4096 characters.", genai.RoleModel),
+		ResponseMIMEType:  "text/plain",
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
