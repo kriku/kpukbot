@@ -10,7 +10,7 @@ import (
 )
 
 type Client interface {
-	GenerateContent(ctx context.Context, prompt string) (string, error)
+	GenerateContent(ctx context.Context, prompt string, config *genai.GenerationConfig) (string, error)
 	GenerateContentWithHistory(ctx context.Context, history []Message, prompt string) (string, error)
 	Close() error
 }
@@ -47,7 +47,7 @@ func NewGeminiClient(ctx context.Context, apiKey string, logger *slog.Logger) (C
 	}, nil
 }
 
-func (g *GeminiClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (g *GeminiClient) GenerateContent(ctx context.Context, prompt string, config *genai.GenerationConfig) (string, error) {
 	g.logger.DebugContext(ctx, "Generating content", "prompt_length", len(prompt))
 
 	resp, err := g.model.GenerateContent(ctx, genai.Text(prompt))

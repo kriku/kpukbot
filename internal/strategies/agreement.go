@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
@@ -50,7 +51,28 @@ func (s *AgreementStrategy) ShouldRespond(ctx context.Context, thread *models.Th
 func (s *AgreementStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
 	prompt := prompts.AgreementTrackingPrompt(thread, append(messages, newMessage))
 
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeArray,
+			Items: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"topic":    {Type: genai.TypeString},
+					"decision": {Type: genai.TypeString},
+					"participants": {
+						Type: genai.TypeArray,
+						Items: &genai.Schema{
+							Type: genai.TypeString,
+						},
+					},
+					"confidence": {Type: genai.TypeNumber},
+				},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		return "", err
 	}

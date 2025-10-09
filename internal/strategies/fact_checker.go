@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
@@ -48,7 +49,18 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 	// Use LLM to determine if fact-checking is needed
 	prompt := "Does this message contain factual claims that should be verified? Answer with JSON: {\"needs_checking\": true/false, \"confidence\": 0.0-1.0}\n\nMessage: " + newMessage.Text
 
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"needs_checking": {Type: genai.TypeBoolean},
+				"confidence":     {Type: genai.TypeNumber},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to analyze for fact-checking", "error", err)
 		return false, 0, err
@@ -78,7 +90,20 @@ func (s *FactCheckerStrategy) GenerateResponse(ctx context.Context, thread *mode
 
 	prompt := prompts.FactCheckingPrompt(contextBuilder.String(), newMessage.Text)
 
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"verified":        {Type: genai.TypeBoolean},
+				"confidence":      {Type: genai.TypeNumber},
+				"explanation":     {Type: genai.TypeString},
+				"additional_info": {Type: genai.TypeString},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		return "", err
 	}

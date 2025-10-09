@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/google/uuid"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
@@ -55,7 +56,35 @@ func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models
 
 	// Use LLM to classify the message
 	prompt := prompts.ThreadClassificationPrompt(message, threads)
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"matches": {
+					Type: genai.TypeArray,
+					Items: &genai.Schema{
+						Type: genai.TypeObject,
+						Properties: map[string]*genai.Schema{
+							"thread_id":   {Type: genai.TypeString},
+							"probability": {Type: genai.TypeNumber},
+							"reasoning":   {Type: genai.TypeString},
+						},
+					},
+				},
+				"new_thread_suggestion": {
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"theme":       {Type: genai.TypeString},
+						"probability": {Type: genai.TypeNumber},
+					},
+				},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to classify message: %w", err)
 	}
@@ -117,7 +146,18 @@ func (s *ClassifierService) createNewThread(ctx context.Context, message *models
 	messages := []*models.Message{message}
 	prompt := prompts.ThreadSummaryPrompt(messages)
 
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"theme":   {Type: genai.TypeString},
+				"summary": {Type: genai.TypeString},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		s.logger.WarnContext(ctx, "Failed to generate thread summary", "error", err)
 		// Use fallback
@@ -191,7 +231,19 @@ func (s *ClassifierService) updateThreadSummary(ctx context.Context, thread *mod
 	}
 
 	prompt := prompts.ThreadSummaryPrompt(messages)
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"theme":   {Type: genai.TypeString},
+				"summary": {Type: genai.TypeString},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		return err
 	}

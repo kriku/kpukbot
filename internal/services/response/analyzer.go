@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
@@ -42,7 +43,20 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 
 	// First, use LLM to get general assessment
 	prompt := prompts.ResponseAnalysisPrompt(thread, messages, newMessage)
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"should_respond":     {Type: genai.TypeBoolean},
+				"confidence":         {Type: genai.TypeNumber},
+				"reason":             {Type: genai.TypeString},
+				"suggested_strategy": {Type: genai.TypeString},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		s.logger.WarnContext(ctx, "Failed to get LLM analysis", "error", err)
 	}

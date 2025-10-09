@@ -25,6 +25,7 @@ type TelegramClient struct {
 func NewTelegramClient(ctx context.Context, c *config.Config, handler bot.HandlerFunc) (MessengerClient, error) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handler),
+		bot.WithNotAsyncHandlers(),
 	}
 
 	b, err := bot.New(c.TelegramToken, opts...)

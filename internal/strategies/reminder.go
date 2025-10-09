@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/generative-ai-go/genai"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
@@ -50,7 +51,28 @@ func (s *ReminderStrategy) ShouldRespond(ctx context.Context, thread *models.Thr
 func (s *ReminderStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
 	prompt := prompts.ReminderPrompt(thread, append(messages, newMessage))
 
-	response, err := s.gemini.GenerateContent(ctx, prompt)
+	config := &genai.GenerationConfig{
+		ResponseMIMEType: "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"reminders": {
+					Type: genai.TypeArray,
+					Items: &genai.Schema{
+						Type: genai.TypeObject,
+						Properties: map[string]*genai.Schema{
+							"person":   {Type: genai.TypeString},
+							"action":   {Type: genai.TypeString},
+							"deadline": {Type: genai.TypeString},
+							"priority": {Type: genai.TypeString},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 	if err != nil {
 		return "", err
 	}
