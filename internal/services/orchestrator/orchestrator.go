@@ -89,7 +89,7 @@ func (s *OrchestratorService) ProcessMessage(ctx context.Context, message *model
 	if responseText != "" {
 		s.logger.InfoContext(ctx, "Sending response", "response_length", len(responseText))
 
-		_, err := s.telegramClient.SendMessage(message.ChatID, responseText)
+		_, err := s.telegramClient.SendMessage(ctx, message.ChatID, responseText)
 		if err != nil {
 			return fmt.Errorf("failed to send response: %w", err)
 		}

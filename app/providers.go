@@ -8,11 +8,9 @@ import (
 	"github.com/kriku/kpukbot/internal/config"
 )
 
-// NewFirestoreClient creates a new Firestore client
-func NewFirestoreClient(c *config.Config) (*firestore.Client, error) {
-	ctx := context.Background()
-
+func NewFirestoreClient(ctx context.Context, c *config.Config) (*firestore.Client, error) {
 	client, err := firestore.NewClient(ctx, c.FilestoreConfig.ProjectID)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create firestore client: %w", err)
 	}

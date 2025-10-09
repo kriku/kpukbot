@@ -27,15 +27,14 @@ import (
 
 // Injectors from wire.go:
 
-func InitAppLocal() (App, error) {
+func InitApp(ctx context.Context) (App, error) {
 	slogLogger := logger.NewLogger()
 	configConfig := config.NewConfig()
-	context := ProvideContext()
-	client, err := ProvideGeminiClient(context, configConfig, slogLogger)
+	client, err := ProvideGeminiClient(ctx, configConfig, slogLogger)
 	if err != nil {
 		return App{}, err
 	}
-	firestoreClient, err := NewFirestoreClient(configConfig)
+	firestoreClient, err := NewFirestoreClient(ctx, configConfig)
 	if err != nil {
 		return App{}, err
 	}
@@ -46,20 +45,15 @@ func InitAppLocal() (App, error) {
 	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
 	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, slogLogger)
 	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
-	messengerClient, err := telegram.NewTelegramClient(configConfig, handlerFunc)
+	messengerClient, err := telegram.NewTelegramClient(ctx, configConfig, handlerFunc)
 	if err != nil {
 		return App{}, err
 	}
-	app := NewApp(slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
+	app := NewApp(ctx, slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
 	return app, nil
 }
 
 // wire.go:
-
-// ProvideContext provides a context
-func ProvideContext() context.Context {
-	return context.Background()
-}
 
 // ProvideGeminiClient provides a Gemini client
 func ProvideGeminiClient(ctx context.Context, cfg *config.Config, logger2 *slog.Logger) (gemini.Client, error) {
@@ -114,7 +108,7 @@ func ProvideOrchestratorHandler(
 	return handlers.NewOrchestratorHandler(orch, logger2)
 }
 
-var baseSet = wire.NewSet(config.NewConfig, ProvideContext, logger.NewLogger, NewFirestoreClient,
+var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, NewFirestoreClient,
 
 	ProvideGeminiClient,
 

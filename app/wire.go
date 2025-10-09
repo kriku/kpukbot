@@ -26,11 +26,6 @@ import (
 
 // Provider functions
 
-// ProvideContext provides a context
-func ProvideContext() context.Context {
-	return context.Background()
-}
-
 // ProvideGeminiClient provides a Gemini client
 func ProvideGeminiClient(ctx context.Context, cfg *config.Config, logger *slog.Logger) (gemini.Client, error) {
 	return gemini.NewGeminiClient(ctx, cfg.GeminiAPIKey, logger)
@@ -97,7 +92,6 @@ func ProvideOrchestratorHandler(
 var baseSet = wire.NewSet(
 	// Config and context
 	config.NewConfig,
-	ProvideContext,
 
 	// Logger
 	logger.NewLogger,
@@ -128,7 +122,7 @@ var baseSet = wire.NewSet(
 	NewApp,
 )
 
-func InitAppLocal() (App, error) {
+func InitApp(ctx context.Context) (App, error) {
 	wire.Build(
 		baseSet,
 	)

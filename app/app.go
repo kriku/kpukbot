@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 
 	"cloud.google.com/go/firestore"
@@ -10,6 +11,7 @@ import (
 )
 
 type App struct {
+	Context            context.Context
 	Logger             *slog.Logger
 	MessengerClient    clients.MessengerClient
 	MessagesRepository repositories.MessagesRepository
@@ -18,6 +20,7 @@ type App struct {
 }
 
 func NewApp(
+	ctx context.Context,
 	lo *slog.Logger,
 	mc clients.MessengerClient,
 	mr repositories.MessagesRepository,
@@ -28,6 +31,7 @@ func NewApp(
 	orch.SetTelegramClient(mc)
 
 	return App{
+		Context:            ctx,
 		Logger:             lo,
 		MessengerClient:    mc,
 		MessagesRepository: mr,

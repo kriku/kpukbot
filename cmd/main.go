@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/kriku/kpukbot/app"
@@ -8,7 +9,9 @@ import (
 
 // Send any text message to the bot after the bot has been started
 func main() {
-	a, err := app.InitAppLocal()
+	ctx := context.Background()
+
+	a, err := app.InitApp(ctx)
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
@@ -17,5 +20,5 @@ func main() {
 	a.Logger.Info("Starting Telegram bot with Gemini integration...")
 	a.Logger.Info("Orchestrator initialized successfully")
 
-	a.MessengerClient.Start()
+	a.MessengerClient.Start(ctx)
 }

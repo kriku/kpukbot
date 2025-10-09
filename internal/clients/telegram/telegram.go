@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
-	"os/signal"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -13,9 +11,9 @@ import (
 )
 
 type MessengerClient interface {
-	Start() error
-	SendMessage(chatID int64, text string) (*models.Message, error)
-	HandleWebhook(res http.ResponseWriter, req *http.Request)
+	Start(ctx context.Context) error
+	SendMessage(ctx context.Context, chatID int64, text string) (*models.Message, error)
+	HandleWebhook(ctx context.Context, res http.ResponseWriter, req *http.Request)
 
 	Close() error
 }
@@ -24,7 +22,7 @@ type TelegramClient struct {
 	bot *bot.Bot
 }
 
-func NewTelegramClient(c *config.Config, handler bot.HandlerFunc) (MessengerClient, error) {
+func NewTelegramClient(ctx context.Context, c *config.Config, handler bot.HandlerFunc) (MessengerClient, error) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handler),
 	}
@@ -40,40 +38,33 @@ func NewTelegramClient(c *config.Config, handler bot.HandlerFunc) (MessengerClie
 	}, nil
 }
 
-func (t *TelegramClient) Start() error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
+func (t *TelegramClient) Start(ctx context.Context) error {
 	t.bot.Start(ctx)
 
 	return nil
 }
 
-func (t *TelegramClient) SendMessage(chatID int64, text string) (*models.Message, error) {
-	// Implement SendMessage method
+func (t *TelegramClient) SendMessage(ctx context.Context, chatID int64, text string) (*models.Message, error) {
 	msg := bot.SendMessageParams{
 		ChatID: chatID,
 		Text:   text,
 	}
-	ctx := context.Background()
+
 	message, err := t.bot.SendMessage(ctx, &msg)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return message, nil
 }
 
-func (t *TelegramClient) HandleWebhook(res http.ResponseWriter, req *http.Request) {
+func (t *TelegramClient) HandleWebhook(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	update := models.Update{}
-
 	json.NewDecoder(req.Body).Decode(&update)
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
 	t.bot.ProcessUpdate(ctx, &update)
 }
 
 func (t *TelegramClient) Close() error {
-	// Implement Close method
 	return nil
 }

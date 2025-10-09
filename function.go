@@ -1,14 +1,19 @@
 package kpukbot
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/kriku/kpukbot/app"
 )
 
 func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
-	a, err := app.InitAppLocal()
+	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Minute)
+	defer cancel()
+
+	a, err := app.InitApp(ctx)
 	if err != nil {
 		log.Printf("Failed to initialize application: %v", err)
 		res.WriteHeader(http.StatusInternalServerError)
@@ -17,7 +22,7 @@ func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
 	}
 	defer a.Close()
 
-	a.MessengerClient.HandleWebhook(res, req)
+	a.MessengerClient.HandleWebhook(ctx, res, req)
 
 	res.WriteHeader(http.StatusOK)
 	res.Write([]byte("ok"))

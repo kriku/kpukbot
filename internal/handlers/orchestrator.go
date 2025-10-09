@@ -28,7 +28,6 @@ func NewOrchestratorHandler(
 }
 
 func (h *OrchestratorHandler) Handle(ctx context.Context, b *bot.Bot, update *botModels.Update) {
-	// Skip if not a message
 	if update.Message == nil {
 		return
 	}
@@ -38,20 +37,17 @@ func (h *OrchestratorHandler) Handle(ctx context.Context, b *bot.Bot, update *bo
 		"chat_id", update.Message.Chat.ID,
 		"text", update.Message.Text)
 
-	// Convert Telegram message to our model
 	message := models.NewMessageFromTelegramUpdate(update)
 	if message == nil {
 		h.logger.WarnContext(ctx, "Failed to convert message")
 		return
 	}
 
-	// Process through orchestrator
 	if err := h.orchestrator.ProcessMessage(ctx, message); err != nil {
 		h.logger.ErrorContext(ctx, "Failed to process message",
 			"error", err,
 			"message_id", message.ID)
 
-		// Send error response to user
 		_, sendErr := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Sorry, I encountered an error processing your message. Please try again.",
