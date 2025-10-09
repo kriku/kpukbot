@@ -4,14 +4,12 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/kriku/kpukbot/app"
 )
 
 func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	a, err := app.InitApp(ctx)
 	if err != nil {
