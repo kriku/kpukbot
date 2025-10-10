@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 )
 
@@ -30,7 +31,12 @@ func ThreadClassificationPrompt(message *models.Message, existingThreads []*mode
 	sb.WriteString("Для каждого треда укажите:\n")
 	sb.WriteString("1. Вероятность совпадения (от 0.0 до 1.0)\n")
 	sb.WriteString("2. Краткое обоснование\n\n")
-	sb.WriteString("Если ни один тред не подходит (вероятность для всех ниже 0.5), предложите новую тему для треда.\n\n")
+	sb.WriteString(
+		fmt.Sprintf(
+			"Если ни один тред не подходит (вероятность для всех ниже 0.5), предложите новую тему для треда, длинной не больше %d символов.\n\n",
+			constants.MaxThreadThemeLength,
+		),
+	)
 
 	return sb.String()
 }

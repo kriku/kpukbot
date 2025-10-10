@@ -73,7 +73,7 @@ func (s *FactCheckingStrategy) ShouldRespond(ctx context.Context, thread *models
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
 
-	s.logger.InfoContext(ctx, "Fact checker response", "response", response)
+	s.logger.InfoContext(ctx, "Fact checker analyzer response", "response", response)
 
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to analyze for fact-checking", "error", err)
@@ -109,15 +109,24 @@ func (s *FactCheckingStrategy) GenerateResponse(ctx context.Context, thread *mod
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"verified":        {Type: genai.TypeBoolean},
-				"confidence":      {Type: genai.TypeNumber},
-				"explanation":     {Type: genai.TypeString},
-				"additional_info": {Type: genai.TypeString},
+				"verified":   {Type: genai.TypeBoolean},
+				"confidence": {Type: genai.TypeNumber},
+				"explanation": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxFactCheckingExplanationLength,
+				},
+				"additional_info": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxFactCheckingAdditionalInfoLength,
+				},
 			},
 		},
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Fact checker response", "response", response)
+
 	if err != nil {
 		return "", err
 	}
@@ -132,17 +141,17 @@ func (s *FactCheckingStrategy) GenerateResponse(ctx context.Context, thread *mod
 
 	if err := json.Unmarshal([]byte(response), &result); err != nil {
 		// If parsing fails, return the raw response
-		return "🔍 Fact Check:\n" + response, nil
+		return "🔍 Факт:\n" + response, nil
 	}
 
 	// Format a nice response
 	var responseBuilder strings.Builder
-	responseBuilder.WriteString("🔍 Fact Check:\n\n")
+	responseBuilder.WriteString("🔍 Факт:\n\n")
 
 	if result.Verified {
-		responseBuilder.WriteString("✅ This appears to be correct.\n\n")
+		responseBuilder.WriteString("✅ Абсолютно верно.\n\n")
 	} else {
-		responseBuilder.WriteString("⚠️ This may not be accurate.\n\n")
+		responseBuilder.WriteString("⚠️ Возможно это не правда.\n\n")
 	}
 
 	responseBuilder.WriteString(result.Explanation)
