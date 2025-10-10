@@ -7,32 +7,33 @@ import (
 	"strings"
 
 	"github.com/kriku/kpukbot/internal/clients/gemini"
+	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	"google.golang.org/genai"
 )
 
-type FactCheckerStrategy struct {
+type FactCheckingStrategy struct {
 	gemini gemini.Client
 	logger *slog.Logger
 }
 
-func NewFactCheckerStrategy(gemini gemini.Client, logger *slog.Logger) *FactCheckerStrategy {
-	return &FactCheckerStrategy{
+func NewFactCheckingStrategy(gemini gemini.Client, logger *slog.Logger) *FactCheckingStrategy {
+	return &FactCheckingStrategy{
 		gemini: gemini,
-		logger: logger.With("strategy", "fact_checker"),
+		logger: logger.With("strategy", "fact_checking"),
 	}
 }
 
-func (s *FactCheckerStrategy) Name() string {
+func (s *FactCheckingStrategy) Name() string {
 	return "fact_checking"
 }
 
-func (s *FactCheckerStrategy) Priority() int {
+func (s *FactCheckingStrategy) Priority() int {
 	return 80 // High priority
 }
 
-func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (bool, float64, error) {
+func (s *FactCheckingStrategy) ShouldRespond(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (bool, float64, error) {
 	// Check if message contains factual claims or questions
 	text := strings.ToLower(newMessage.Text)
 
@@ -46,8 +47,14 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 		}
 	}
 
-	// Use LLM to determine if fact-checking is needed
-	prompt := "Does this message contain factual claims that should be verified? Answer with JSON: {\"needs_checking\": true/false, \"confidence\": 0.0-1.0}\n\nMessage: " + newMessage.Text
+	// Build context from recent messages
+	var contextBuilder strings.Builder
+	for _, msg := range messages {
+		contextBuilder.WriteString(msg.Text)
+		contextBuilder.WriteString(" ")
+	}
+
+	prompt := prompts.FactCheckingPrompt(contextBuilder.String(), newMessage.Text)
 
 	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",
@@ -55,7 +62,11 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
 				"needs_checking": {Type: genai.TypeBoolean},
-				"confidence":     {Type: genai.TypeNumber},
+				"confidence": {
+					Type:    genai.TypeNumber,
+					Minimum: &constants.MinimumConfidenceScore,
+					Maximum: &constants.MaximumConfidenceScore,
+				},
 			},
 		},
 	}
@@ -83,7 +94,7 @@ func (s *FactCheckerStrategy) ShouldRespond(ctx context.Context, thread *models.
 	return result.NeedsChecking, result.Confidence, nil
 }
 
-func (s *FactCheckerStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
+func (s *FactCheckingStrategy) GenerateResponse(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (string, error) {
 	// Build context from recent messages
 	var contextBuilder strings.Builder
 	for _, msg := range messages {

@@ -31,16 +31,6 @@ func ThreadClassificationPrompt(message *models.Message, existingThreads []*mode
 	sb.WriteString("1. Match probability (0.0 to 1.0)\n")
 	sb.WriteString("2. Brief reasoning\n\n")
 	sb.WriteString("If no threads match well (all below 0.5), suggest a new thread theme.\n\n")
-	sb.WriteString("Respond in this JSON format:\n")
-	sb.WriteString(`{
-  "matches": [
-    {"thread_id": "thread-id", "probability": 0.85, "reasoning": "..."}
-  ],
-  "new_thread_suggestion": {
-    "theme": "New thread theme",
-    "probability": 0.9
-  }
-}`)
 
 	return sb.String()
 }
@@ -59,8 +49,6 @@ func ThreadSummaryPrompt(messages []*models.Message) string {
 	sb.WriteString("\nProvide:\n")
 	sb.WriteString("1. A concise theme (5-10 words)\n")
 	sb.WriteString("2. A brief summary (2-3 sentences)\n\n")
-	sb.WriteString("Respond in JSON format:\n")
-	sb.WriteString(`{"theme": "...", "summary": "..."}`)
 
 	return sb.String()
 }
@@ -84,17 +72,6 @@ func ResponseAnalysisPrompt(thread *models.Thread, messages []*models.Message, n
 	sb.WriteString("Analyze if the bot should respond. Consider:\n")
 	sb.WriteString("1. Is there a question that needs answering?\n")
 	sb.WriteString("2. Is fact-checking needed?\n")
-	sb.WriteString("3. Should agreements or decisions be tracked?\n")
-	sb.WriteString("4. Is a reminder appropriate?\n")
-	sb.WriteString("5. Is clarification needed?\n\n")
-
-	sb.WriteString("Respond in JSON format:\n")
-	sb.WriteString(`{
-  "should_respond": true,
-  "confidence": 0.85,
-  "reason": "...",
-  "suggested_strategy": "fact_checking|reminder|agreement|general"
-}`)
 
 	return sb.String()
 }
@@ -111,53 +88,7 @@ Provide:
 1. Verification result (true/false/uncertain)
 2. Explanation
 3. Additional context if needed
-
-Respond in JSON format:
-{"verified": true, "confidence": 0.9, "explanation": "...", "additional_info": "..."}`, context, statement)
-}
-
-// ReminderPrompt generates a prompt for creating reminders
-func ReminderPrompt(thread *models.Thread, messages []*models.Message) string {
-	var sb strings.Builder
-
-	sb.WriteString("Extract any commitments, deadlines, or action items that should be tracked.\n\n")
-	sb.WriteString(fmt.Sprintf("Thread: %s\n\n", thread.Theme))
-
-	sb.WriteString("Messages:\n")
-	for _, msg := range messages {
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", msg.FirstName, msg.Text))
-	}
-
-	sb.WriteString("\nIdentify any reminders needed and respond in JSON format:\n")
-	sb.WriteString(`{
-  "reminders": [
-    {"person": "...", "action": "...", "deadline": "...", "priority": "high|medium|low"}
-  ]
-}`)
-
-	return sb.String()
-}
-
-// AgreementTrackingPrompt generates a prompt for tracking agreements
-func AgreementTrackingPrompt(thread *models.Thread, messages []*models.Message) string {
-	var sb strings.Builder
-
-	sb.WriteString("Identify any agreements, decisions, or consensus reached in this conversation.\n\n")
-	sb.WriteString(fmt.Sprintf("Thread: %s\n\n", thread.Theme))
-
-	sb.WriteString("Messages:\n")
-	for _, msg := range messages {
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", msg.FirstName, msg.Text))
-	}
-
-	sb.WriteString("\nExtract agreements and respond in JSON format:\n")
-	sb.WriteString(`{
-  "agreements": [
-    {"topic": "...", "decision": "...", "participants": ["..."], "confidence": 0.9}
-  ]
-}`)
-
-	return sb.String()
+`, context, statement)
 }
 
 // GeneralResponsePrompt generates a prompt for general responses

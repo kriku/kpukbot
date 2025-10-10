@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kriku/kpukbot/internal/clients/gemini"
+	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
@@ -69,14 +70,20 @@ func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models
 						Properties: map[string]*genai.Schema{
 							"thread_id":   {Type: genai.TypeString},
 							"probability": {Type: genai.TypeNumber},
-							"reasoning":   {Type: genai.TypeString},
+							"reasoning": {
+								Type:      genai.TypeString,
+								MaxLength: &constants.MaxThreadReasoningLength,
+							},
 						},
 					},
 				},
 				"new_thread_suggestion": {
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
-						"theme":       {Type: genai.TypeString},
+						"theme": {
+							Type:      genai.TypeString,
+							MaxLength: &constants.MaxThreadThemeLength,
+						},
 						"probability": {Type: genai.TypeNumber},
 					},
 				},
@@ -154,8 +161,14 @@ func (s *ClassifierService) createNewThread(ctx context.Context, message *models
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"theme":   {Type: genai.TypeString},
-				"summary": {Type: genai.TypeString},
+				"theme": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxThreadThemeLength,
+				},
+				"summary": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxThreadSummaryLength,
+				},
 			},
 		},
 	}
@@ -243,8 +256,14 @@ func (s *ClassifierService) updateThreadSummary(ctx context.Context, thread *mod
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"theme":   {Type: genai.TypeString},
-				"summary": {Type: genai.TypeString},
+				"theme": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxThreadThemeLength,
+				},
+				"summary": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxThreadSummaryLength,
+				},
 			},
 		},
 	}

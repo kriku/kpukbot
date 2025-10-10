@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/kriku/kpukbot/internal/clients/gemini"
+	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	"github.com/kriku/kpukbot/internal/strategies"
@@ -48,10 +49,20 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 		ResponseSchema: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"should_respond":     {Type: genai.TypeBoolean},
-				"confidence":         {Type: genai.TypeNumber},
-				"reason":             {Type: genai.TypeString},
-				"suggested_strategy": {Type: genai.TypeString},
+				"should_respond": {Type: genai.TypeBoolean},
+				"confidence": {
+					Type:    genai.TypeNumber,
+					Minimum: &constants.MinimumConfidenceScore,
+					Maximum: &constants.MaximumConfidenceScore,
+				},
+				"reason": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxAnalysisLength,
+				},
+				"suggested_strategy": {
+					Type: genai.TypeString,
+					Enum: []string{"general", "fact_checking"},
+				},
 			},
 		},
 	}
