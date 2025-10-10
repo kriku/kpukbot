@@ -31,6 +31,16 @@ func ThreadClassificationPrompt(message *models.Message, existingThreads []*mode
 	sb.WriteString("1. Match probability (0.0 to 1.0)\n")
 	sb.WriteString("2. Brief reasoning\n\n")
 	sb.WriteString("If no threads match well (all below 0.5), suggest a new thread theme.\n\n")
+	sb.WriteString("Respond in this JSON format:\n")
+	sb.WriteString(`{
+  "matches": [
+    {"thread_id": "thread-id", "probability": 0.85, "reasoning": "..."}
+  ],
+  "new_thread_suggestion": {
+    "theme": "New thread theme",
+    "probability": 0.9
+  }
+}`)
 
 	return sb.String()
 }
@@ -49,6 +59,8 @@ func ThreadSummaryPrompt(messages []*models.Message) string {
 	sb.WriteString("\nProvide:\n")
 	sb.WriteString("1. A concise theme (5-10 words)\n")
 	sb.WriteString("2. A brief summary (2-3 sentences)\n\n")
+	sb.WriteString("Respond in JSON format:\n")
+	sb.WriteString(`{"theme": "...", "summary": "..."}`)
 
 	return sb.String()
 }
@@ -76,6 +88,14 @@ func ResponseAnalysisPrompt(thread *models.Thread, messages []*models.Message, n
 	sb.WriteString("4. Is a reminder appropriate?\n")
 	sb.WriteString("5. Is clarification needed?\n\n")
 
+	sb.WriteString("Respond in JSON format:\n")
+	sb.WriteString(`{
+  "should_respond": true,
+  "confidence": 0.85,
+  "reason": "...",
+  "suggested_strategy": "fact_checking|reminder|agreement|general"
+}`)
+
 	return sb.String()
 }
 
@@ -91,7 +111,9 @@ Provide:
 1. Verification result (true/false/uncertain)
 2. Explanation
 3. Additional context if needed
-`, context, statement)
+
+Respond in JSON format:
+{"verified": true, "confidence": 0.9, "explanation": "...", "additional_info": "..."}`, context, statement)
 }
 
 // ReminderPrompt generates a prompt for creating reminders
@@ -105,6 +127,13 @@ func ReminderPrompt(thread *models.Thread, messages []*models.Message) string {
 	for _, msg := range messages {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", msg.FirstName, msg.Text))
 	}
+
+	sb.WriteString("\nIdentify any reminders needed and respond in JSON format:\n")
+	sb.WriteString(`{
+  "reminders": [
+    {"person": "...", "action": "...", "deadline": "...", "priority": "high|medium|low"}
+  ]
+}`)
 
 	return sb.String()
 }
@@ -120,6 +149,13 @@ func AgreementTrackingPrompt(thread *models.Thread, messages []*models.Message) 
 	for _, msg := range messages {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", msg.FirstName, msg.Text))
 	}
+
+	sb.WriteString("\nExtract agreements and respond in JSON format:\n")
+	sb.WriteString(`{
+  "agreements": [
+    {"topic": "...", "decision": "...", "participants": ["..."], "confidence": 0.9}
+  ]
+}`)
 
 	return sb.String()
 }
