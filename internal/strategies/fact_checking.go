@@ -54,7 +54,7 @@ func (s *FactCheckingStrategy) ShouldRespond(ctx context.Context, thread *models
 		contextBuilder.WriteString(" ")
 	}
 
-	prompt := prompts.FactCheckingPrompt(contextBuilder.String(), newMessage.Text)
+	prompt := prompts.FactCheckingNeedsPrompt(contextBuilder.String(), newMessage.Text)
 
 	config := &genai.GenerateContentConfig{
 		ResponseMIMEType: "application/json",

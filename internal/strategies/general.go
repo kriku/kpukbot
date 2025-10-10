@@ -27,7 +27,7 @@ func (s *GeneralStrategy) Name() string {
 }
 
 func (s *GeneralStrategy) Priority() int {
-	return 10 // Lowest priority - fallback
+	return 30 // Lowest priority - fallback
 }
 
 func (s *GeneralStrategy) ShouldRespond(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (bool, float64, error) {

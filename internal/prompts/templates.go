@@ -76,6 +76,21 @@ func ResponseAnalysisPrompt(thread *models.Thread, messages []*models.Message, n
 	return sb.String()
 }
 
+func FactCheckingNeedsPrompt(context string, statement string) string {
+	var sb strings.Builder
+
+	sb.WriteString("Вы — ассистент по проверке фактов. Проанализируйте, требует ли следующее сообщение проверки фактов.\n\n")
+	sb.WriteString(fmt.Sprintf("Контекст: %s\n\n", context))
+
+	sb.WriteString(fmt.Sprintf("Утверждение: %s\n\n", statement))
+
+	sb.WriteString("Проанализируйте, требует ли это сообщение проверки фактов. Учитывайте:\n")
+	sb.WriteString("1. Содержит ли сообщение утверждения, которые можно проверить?\n")
+	sb.WriteString("2. Являются ли эти утверждения спорными или потенциально ложными?\n")
+
+	return sb.String()
+}
+
 // FactCheckingPrompt generates a prompt for fact-checking
 func FactCheckingPrompt(context string, statement string) string {
 	return fmt.Sprintf(`Вы — ассистент по проверке фактов. Проанализируйте следующее утверждение в контексте.
