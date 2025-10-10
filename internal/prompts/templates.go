@@ -11,26 +11,26 @@ import (
 func ThreadClassificationPrompt(message *models.Message, existingThreads []*models.Thread) string {
 	var sb strings.Builder
 
-	sb.WriteString("You are a thread classification assistant. Analyze the following message and determine if it belongs to any existing conversation threads.\n\n")
+	sb.WriteString("Вы — ассистент по классификации тредов. Проанализируйте следующее сообщение и определите, принадлежит ли оно к какому-либо из существующих тредов обсуждения.\n\n")
 
-	sb.WriteString(fmt.Sprintf("New Message:\n"))
-	sb.WriteString(fmt.Sprintf("From: %s %s (@%s)\n", message.FirstName, message.LastName, message.Username))
-	sb.WriteString(fmt.Sprintf("Text: %s\n\n", message.Text))
+	sb.WriteString("Новое сообщение:\n")
+	sb.WriteString(fmt.Sprintf("От: %s %s (@%s)\n", message.FirstName, message.LastName, message.Username))
+	sb.WriteString(fmt.Sprintf("Текст: %s\n\n", message.Text))
 
 	if len(existingThreads) > 0 {
-		sb.WriteString("Existing Threads:\n")
+		sb.WriteString("Существующие треды:\n")
 		for i, thread := range existingThreads {
-			sb.WriteString(fmt.Sprintf("\nThread %d (ID: %s):\n", i+1, thread.ID))
-			sb.WriteString(fmt.Sprintf("Theme: %s\n", thread.Theme))
-			sb.WriteString(fmt.Sprintf("Summary: %s\n", thread.Summary))
+			sb.WriteString(fmt.Sprintf("\nТред %d (ID: %s):\n", i+1, thread.ID))
+			sb.WriteString(fmt.Sprintf("Тема: %s\n", thread.Theme))
+			sb.WriteString(fmt.Sprintf("Сводка: %s\n", thread.Summary))
 		}
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString("For each thread, provide:\n")
-	sb.WriteString("1. Match probability (0.0 to 1.0)\n")
-	sb.WriteString("2. Brief reasoning\n\n")
-	sb.WriteString("If no threads match well (all below 0.5), suggest a new thread theme.\n\n")
+	sb.WriteString("Для каждого треда укажите:\n")
+	sb.WriteString("1. Вероятность совпадения (от 0.0 до 1.0)\n")
+	sb.WriteString("2. Краткое обоснование\n\n")
+	sb.WriteString("Если ни один тред не подходит (вероятность для всех ниже 0.5), предложите новую тему для треда.\n\n")
 
 	return sb.String()
 }
@@ -39,16 +39,16 @@ func ThreadClassificationPrompt(message *models.Message, existingThreads []*mode
 func ThreadSummaryPrompt(messages []*models.Message) string {
 	var sb strings.Builder
 
-	sb.WriteString("Summarize the following conversation thread. Identify the main theme and provide a brief summary.\n\n")
-	sb.WriteString("Messages:\n")
+	sb.WriteString("Создайте краткую сводку для следующего треда обсуждения. Определите основную тему и предоставьте краткое изложение.\n\n")
+	sb.WriteString("Сообщения:\n")
 
 	for i, msg := range messages {
 		sb.WriteString(fmt.Sprintf("\n%d. %s %s: %s\n", i+1, msg.FirstName, msg.LastName, msg.Text))
 	}
 
-	sb.WriteString("\nProvide:\n")
-	sb.WriteString("1. A concise theme (5-10 words)\n")
-	sb.WriteString("2. A brief summary (2-3 sentences)\n\n")
+	sb.WriteString("\nУкажите:\n")
+	sb.WriteString("1. Краткую тему (5-10 слов)\n")
+	sb.WriteString("2. Краткую сводку (2-3 предложения)\n\n")
 
 	return sb.String()
 }
@@ -57,37 +57,37 @@ func ThreadSummaryPrompt(messages []*models.Message) string {
 func ResponseAnalysisPrompt(thread *models.Thread, messages []*models.Message, newMessage *models.Message) string {
 	var sb strings.Builder
 
-	sb.WriteString("You are a bot assistant analyzing whether a response is needed for this conversation.\n\n")
+	sb.WriteString("Вы — ассистент-бот, анализирующий, требуется ли ответ в этом обсуждении.\n\n")
 
-	sb.WriteString(fmt.Sprintf("Thread Theme: %s\n", thread.Theme))
-	sb.WriteString(fmt.Sprintf("Thread Summary: %s\n\n", thread.Summary))
+	sb.WriteString(fmt.Sprintf("Тема треда: %s\n", thread.Theme))
+	sb.WriteString(fmt.Sprintf("Сводка треда: %s\n\n", thread.Summary))
 
-	sb.WriteString("Recent Messages:\n")
+	sb.WriteString("Последние сообщения:\n")
 	for i, msg := range messages {
 		sb.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, msg.FirstName, msg.Text))
 	}
 
-	sb.WriteString(fmt.Sprintf("\nNew Message: %s: %s\n\n", newMessage.FirstName, newMessage.Text))
+	sb.WriteString(fmt.Sprintf("\nНовое сообщение: %s: %s\n\n", newMessage.FirstName, newMessage.Text))
 
-	sb.WriteString("Analyze if the bot should respond. Consider:\n")
-	sb.WriteString("1. Is there a question that needs answering?\n")
-	sb.WriteString("2. Is fact-checking needed?\n")
+	sb.WriteString("Проанализируйте, должен ли бот отвечать. Учитывайте:\n")
+	sb.WriteString("1. Есть ли вопрос, требующий ответа?\n")
+	sb.WriteString("2. Требуется ли проверка фактов?\n")
 
 	return sb.String()
 }
 
 // FactCheckingPrompt generates a prompt for fact-checking
 func FactCheckingPrompt(context string, statement string) string {
-	return fmt.Sprintf(`You are a fact-checking assistant. Analyze the following statement in context.
+	return fmt.Sprintf(`Вы — ассистент по проверке фактов. Проанализируйте следующее утверждение в контексте.
 
-Context: %s
+Контекст: %s
 
-Statement to verify: %s
+Утверждение для проверки: %s
 
-Provide:
-1. Verification result (true/false/uncertain)
-2. Explanation
-3. Additional context if needed
+Предоставьте:
+1. Результат проверки (истина/ложь/неопределенно)
+2. Объяснение
+3. Дополнительный контекст, если необходимо
 `, context, statement)
 }
 
@@ -95,16 +95,16 @@ Provide:
 func GeneralResponsePrompt(thread *models.Thread, messages []*models.Message, newMessage *models.Message) string {
 	var sb strings.Builder
 
-	sb.WriteString("Generate a helpful and contextually appropriate response.\n\n")
-	sb.WriteString(fmt.Sprintf("Thread: %s\n\n", thread.Theme))
+	sb.WriteString("Сгенерируйте полезный и контекстуально уместный ответ.\n\n")
+	sb.WriteString(fmt.Sprintf("Тред: %s\n\n", thread.Theme))
 
-	sb.WriteString("Conversation:\n")
+	sb.WriteString("Обсуждение:\n")
 	for _, msg := range messages {
 		sb.WriteString(fmt.Sprintf("%s: %s\n", msg.FirstName, msg.Text))
 	}
 	sb.WriteString(fmt.Sprintf("\n%s: %s\n\n", newMessage.FirstName, newMessage.Text))
 
-	sb.WriteString("Provide a concise, helpful response. Be friendly but professional.")
+	sb.WriteString("Предоставьте краткий, полезный ответ. Будьте дружелюбны, но профессиональны.")
 
 	return sb.String()
 }
