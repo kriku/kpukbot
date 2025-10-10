@@ -94,9 +94,7 @@ func (f *ServiceFactory) GetGeminiClient(ctx context.Context) (gemini.Client, er
 // CreateStrategies creates all response strategies
 func (f *ServiceFactory) CreateStrategies(geminiClient gemini.Client) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
-		strategies.NewFactCheckerStrategy(geminiClient, f.logger),
-		strategies.NewReminderStrategy(geminiClient, f.logger),
-		strategies.NewAgreementStrategy(geminiClient, f.logger),
+		strategies.NewFactCheckingStrategy(geminiClient, f.logger),
 		strategies.NewGeneralStrategy(geminiClient, f.logger),
 	}
 }

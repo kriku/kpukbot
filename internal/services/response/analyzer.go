@@ -96,10 +96,53 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 		"confidence", analysis.Confidence,
 		"suggested_strategy", analysis.SuggestedStrategy)
 
-	// Evaluate all strategies
+	// First, try to find and prioritize the suggested strategy
+	var suggestedStrategy strategies.ResponseStrategy
+	for _, strategy := range s.strategies {
+		if strategy.Name() == analysis.SuggestedStrategy {
+			suggestedStrategy = strategy
+			break
+		}
+	}
+
 	var bestResult *strategies.StrategyResult
 
+	// If we found the suggested strategy, evaluate it first with bonus confidence
+	if suggestedStrategy != nil {
+		shouldRespond, confidence, err := suggestedStrategy.ShouldRespond(ctx, thread, messages, newMessage)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Suggested strategy evaluation failed",
+				"strategy", suggestedStrategy.Name(),
+				"error", err)
+		} else if shouldRespond {
+			// Give suggested strategy a significant confidence boost
+			adjustedConfidence := confidence * (float64(suggestedStrategy.Priority()) / 100.0)
+			bonusConfidence := adjustedConfidence + 0.3 // Add 30% bonus for being LLM-suggested
+			if bonusConfidence > 1.0 {
+				bonusConfidence = 1.0
+			}
+
+			s.logger.InfoContext(ctx, "Suggested strategy evaluated",
+				"strategy", suggestedStrategy.Name(),
+				"original_confidence", confidence,
+				"adjusted_confidence", adjustedConfidence,
+				"bonus_confidence", bonusConfidence)
+
+			bestResult = &strategies.StrategyResult{
+				Strategy:      suggestedStrategy,
+				ShouldRespond: true,
+				Confidence:    bonusConfidence,
+			}
+		}
+	}
+
+	// Evaluate remaining strategies only if suggested strategy didn't qualify or doesn't exist
 	for _, strategy := range s.strategies {
+		// Skip if this is the suggested strategy we already evaluated
+		if suggestedStrategy != nil && strategy.Name() == analysis.SuggestedStrategy {
+			continue
+		}
+
 		shouldRespond, confidence, err := strategy.ShouldRespond(ctx, thread, messages, newMessage)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "Strategy evaluation failed",
