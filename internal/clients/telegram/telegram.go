@@ -47,8 +47,9 @@ func (t *TelegramClient) Start(ctx context.Context) error {
 
 func (t *TelegramClient) SendMessage(ctx context.Context, chatID int64, text string) (*models.Message, error) {
 	msg := bot.SendMessageParams{
-		ChatID: chatID,
-		Text:   text,
+		ChatID:    chatID,
+		Text:      bot.EscapeMarkdown(text),
+		ParseMode: models.ParseModeMarkdown,
 	}
 
 	message, err := t.bot.SendMessage(ctx, &msg)

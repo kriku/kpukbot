@@ -43,6 +43,15 @@ func (h *OrchestratorHandler) Handle(ctx context.Context, b *bot.Bot, update *bo
 		return
 	}
 
+	_, err := b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID: update.Message.Chat.ID,
+		Action: botModels.ChatActionTyping,
+	})
+
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Error sending chat typing:", "error", err)
+	}
+
 	if err := h.orchestrator.ProcessMessage(ctx, message); err != nil {
 		h.logger.ErrorContext(ctx, "Failed to process message",
 			"error", err,
