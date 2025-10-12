@@ -45,6 +45,26 @@ func NewClassifierService(
 func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models.Message) (*models.ThreadMatch, error) {
 	s.logger.InfoContext(ctx, "Classifying message", "message_id", message.ID, "chat_id", message.ChatID)
 
+	// Handle replies
+	if message.ReplyToMessageID != 0 {
+		thread, err := s.threadsRepo.GetThreadByMessageID(ctx, message.ReplyToMessageID)
+		if err != nil {
+			s.logger.WarnContext(ctx, "Failed to get thread by reply message ID", "error", err)
+		}
+		if thread != nil {
+			s.logger.InfoContext(ctx, "Message is a reply, adding to existing thread", "thread_id", thread.ID)
+			err := s.AddMessageToThread(ctx, thread, message)
+			if err != nil {
+				return nil, fmt.Errorf("failed to add message to thread: %w", err)
+			}
+			return &models.ThreadMatch{
+				Thread:      thread,
+				Probability: 1.0,
+				Reasoning:   "Direct reply to a message in the thread",
+			}, nil
+		}
+	}
+
 	// Get active threads for this chat
 	threads, err := s.threadsRepo.GetActiveThreadsByChatID(ctx, message.ChatID)
 	if err != nil {

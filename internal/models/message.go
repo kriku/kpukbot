@@ -7,16 +7,16 @@ import (
 )
 
 type Message struct {
-	ID        int       `firestore:"id"`
-	ChatID    int64     `firestore:"chat_id"`
-	UserID    int64     `firestore:"user_id"`
-	Text      string    `firestore:"text"`
-	Username  string    `firestore:"username"`
-	FirstName string    `firestore:"first_name"`
-	LastName  string    `firestore:"last_name"`
-	Date      time.Time `firestore:"date"`
-	IsBot     bool      `firestore:"is_bot"`
-	// ChatType  string    `firestore:"chat_type"`
+	ID               int       `firestore:"id"`
+	ReplyToMessageID int       `firestore:"reply_to_message_id,omitempty"`
+	ChatID           int64     `firestore:"chat_id"`
+	UserID           int64     `firestore:"user_id"`
+	Text             string    `firestore:"text"`
+	Username         string    `firestore:"username"`
+	FirstName        string    `firestore:"first_name"`
+	LastName         string    `firestore:"last_name"`
+	Date             time.Time `firestore:"date"`
+	IsBot            bool      `firestore:"is_bot"`
 }
 
 func NewMessageFromTelegramUpdate(update *models.Update) *Message {
@@ -30,6 +30,10 @@ func NewMessageFromTelegramUpdate(update *models.Update) *Message {
 		ChatID: msg.Chat.ID,
 		Date:   time.Unix(int64(msg.Date), 0),
 		Text:   msg.Text,
+	}
+
+	if msg.ReplyToMessage != nil {
+		message.ReplyToMessageID = msg.ReplyToMessage.ID
 	}
 
 	if msg.From != nil {

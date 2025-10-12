@@ -41,6 +41,28 @@ func (r *FirestoreThreadsRepository) GetThread(ctx context.Context, id string) (
 	return &thread, nil
 }
 
+func (r *FirestoreThreadsRepository) GetThreadByMessageID(ctx context.Context, messageID int) (*models.Thread, error) {
+	iter := r.client.Collection("threads").
+		Where("message_ids", "array-contains", messageID).
+		Limit(1).
+		Documents(ctx)
+
+	doc, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil // Not found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate threads: %w", err)
+	}
+
+	var thread models.Thread
+	if err := doc.DataTo(&thread); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal thread: %w", err)
+	}
+
+	return &thread, nil
+}
+
 func (r *FirestoreThreadsRepository) GetThreadsByChatID(ctx context.Context, chatID int64) ([]*models.Thread, error) {
 	iter := r.client.Collection("threads").
 		Where("chat_id", "==", chatID).
