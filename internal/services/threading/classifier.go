@@ -18,11 +18,12 @@ import (
 )
 
 type ClassifierService struct {
-	gemini         gemini.Client
-	threadsRepo    threadsRepo.ThreadsRepository
-	messagesRepo   messagesRepo.MessagesRepository
-	logger         *slog.Logger
-	minProbability float64 // Minimum probability to consider a match
+	gemini                gemini.Client
+	threadsRepo           threadsRepo.ThreadsRepository
+	messagesRepo          messagesRepo.MessagesRepository
+	logger                *slog.Logger
+	minProbability        float64 // Minimum probability to consider a match
+	sameUserTimeThreshold time.Duration
 }
 
 func NewClassifierService(
@@ -32,11 +33,12 @@ func NewClassifierService(
 	logger *slog.Logger,
 ) *ClassifierService {
 	return &ClassifierService{
-		gemini:         gemini,
-		threadsRepo:    threadsRepo,
-		messagesRepo:   messagesRepo,
-		logger:         logger.With("service", "classifier"),
-		minProbability: 0.5, // Default threshold
+		gemini:                gemini,
+		threadsRepo:           threadsRepo,
+		messagesRepo:          messagesRepo,
+		logger:                logger.With("service", "classifier"),
+		minProbability:        0.5, // Default threshold
+		sameUserTimeThreshold: 5 * time.Minute,
 	}
 }
 
@@ -47,6 +49,31 @@ func (s *ClassifierService) ClassifyMessage(ctx context.Context, message *models
 	threads, err := s.threadsRepo.GetActiveThreadsByChatID(ctx, message.ChatID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get threads: %w", err)
+	}
+
+	// Quick check for same user continuation
+	for _, thread := range threads {
+		if len(thread.MessageIDs) > 0 {
+			lastMessageID := thread.MessageIDs[len(thread.MessageIDs)-1]
+			lastMessages, err := s.messagesRepo.GetMessage(ctx, int64(lastMessageID))
+			if err != nil || len(lastMessages) == 0 {
+				continue
+			}
+			lastMessage := lastMessages[0]
+
+			if lastMessage.UserID == message.UserID && message.Date.Sub(lastMessage.Date) < s.sameUserTimeThreshold {
+				s.logger.InfoContext(ctx, "Same user sent message in short period, adding to existing thread", "thread_id", thread.ID)
+				err := s.AddMessageToThread(ctx, thread, message)
+				if err != nil {
+					return nil, fmt.Errorf("failed to add message to thread: %w", err)
+				}
+				return &models.ThreadMatch{
+					Thread:      thread,
+					Probability: 1.0,
+					Reasoning:   "Same user continuation",
+				}, nil
+			}
+		}
 	}
 
 	// If no active threads, create a new one
