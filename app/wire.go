@@ -26,8 +26,12 @@ import (
 
 // Provider functions
 
-// ProvideGeminiClient provides a Gemini client
+// ProvideGeminiClient provides a Gemini client (real or mock based on config)
 func ProvideGeminiClient(ctx context.Context, cfg *config.Config, logger *slog.Logger) (gemini.Client, error) {
+	if cfg.UseMockGemini {
+		logger.Info("Using mock Gemini client for local testing")
+		return gemini.NewMockClient(logger), nil
+	}
 	return gemini.NewGeminiClient(ctx, cfg.GeminiAPIKey, logger)
 }
 

@@ -55,8 +55,13 @@ func InitApp(ctx context.Context) (App, error) {
 
 // wire.go:
 
-// ProvideGeminiClient provides a Gemini client
+// ProvideGeminiClient provides a Gemini client (real or mock based on config)
 func ProvideGeminiClient(ctx context.Context, cfg *config.Config, logger2 *slog.Logger) (gemini.Client, error) {
+	if cfg.UseMockGemini {
+		logger2.
+			Info("Using mock Gemini client for local testing")
+		return gemini.NewMockClient(logger2), nil
+	}
 	return gemini.NewGeminiClient(ctx, cfg.GeminiAPIKey, logger2)
 }
 

@@ -10,6 +10,7 @@ type Config struct {
 	TelegramToken   string
 	GeminiModelName string
 	FilestoreConfig FirestoreConfig
+	UseMockGemini   bool // Enable mock Gemini client for local testing
 }
 
 // FirestoreConfig holds the configuration for Firebase/Firestore
@@ -38,5 +39,6 @@ func NewConfig() *Config {
 		TelegramToken:   os.Getenv("TELEGRAM_API_TOKEN"),
 		GeminiModelName: modelName,
 		FilestoreConfig: firestoreConfig,
+		UseMockGemini:   os.Getenv("USE_MOCK_GEMINI") == "true",
 	}
 }
