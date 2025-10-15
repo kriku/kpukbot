@@ -44,7 +44,6 @@ func ProvideThreadsRepository(client *firestore.Client) threadsRepo.ThreadsRepos
 // ProvideStrategies provides all response strategies
 func ProvideStrategies(geminiClient gemini.Client, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
-		strategies.NewFactCheckingStrategy(geminiClient, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }

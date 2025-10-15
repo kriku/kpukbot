@@ -72,7 +72,7 @@ func ProvideThreadsRepository(client *firestore.Client) threads.ThreadsRepositor
 
 // ProvideStrategies provides all response strategies
 func ProvideStrategies(geminiClient gemini.Client, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewFactCheckingStrategy(geminiClient, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+	return []strategies.ResponseStrategy{strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service
