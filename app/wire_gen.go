@@ -18,9 +18,11 @@ import (
 	"github.com/kriku/kpukbot/internal/logger"
 	"github.com/kriku/kpukbot/internal/repository/messages"
 	"github.com/kriku/kpukbot/internal/repository/threads"
+	"github.com/kriku/kpukbot/internal/repository/users"
 	"github.com/kriku/kpukbot/internal/services/orchestrator"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
+	users2 "github.com/kriku/kpukbot/internal/services/users"
 	"github.com/kriku/kpukbot/internal/strategies"
 	"log/slog"
 )
@@ -43,7 +45,9 @@ func InitApp(ctx context.Context) (App, error) {
 	classifierService := ProvideClassifierService(client, threadsRepository, messagesRepository, slogLogger)
 	v := ProvideStrategies(client, slogLogger)
 	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
-	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, slogLogger)
+	usersRepository := ProvideUsersRepository(firestoreClient)
+	usersService := ProvideUsersService(usersRepository, slogLogger)
+	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, usersService, slogLogger)
 	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
 	messengerClient, err := telegram.NewTelegramClient(ctx, configConfig, handlerFunc)
 	if err != nil {
@@ -75,6 +79,16 @@ func ProvideThreadsRepository(client *firestore.Client) threads.ThreadsRepositor
 	return threads.NewFirestoreThreadsRepository(client)
 }
 
+// ProvideUsersRepository provides a users repository
+func ProvideUsersRepository(client *firestore.Client) users.UsersRepository {
+	return users.NewFirestoreUsersRepository(client)
+}
+
+// ProvideUsersService provides the users service
+func ProvideUsersService(repository users.UsersRepository, logger2 *slog.Logger) *users2.UsersService {
+	return users2.NewUsersService(repository, logger2)
+}
+
 // ProvideStrategies provides all response strategies
 func ProvideStrategies(geminiClient gemini.Client, logger2 *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{strategies.NewGeneralStrategy(geminiClient, logger2)}
@@ -100,10 +114,11 @@ func ProvideAnalyzerService(
 func ProvideOrchestratorService(
 	classifier *threading.ClassifierService,
 	analyzer *response.AnalyzerService,
-	messagesRepository messages.MessagesRepository, logger2 *slog.Logger,
+	messagesRepository messages.MessagesRepository,
+	usersService *users2.UsersService, logger2 *slog.Logger,
 ) *orchestrator.OrchestratorService {
 
-	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, nil, logger2)
+	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, nil, logger2)
 }
 
 // ProvideOrchestratorHandler provides the orchestrator handler
@@ -119,10 +134,12 @@ var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, NewFirestoreClient
 
 	ProvideMessagesRepository,
 	ProvideThreadsRepository,
+	ProvideUsersRepository,
 
 	ProvideStrategies,
 	ProvideClassifierService,
 	ProvideAnalyzerService,
+	ProvideUsersService,
 	ProvideOrchestratorService,
 
 	ProvideOrchestratorHandler, telegram.NewTelegramClient, NewApp,

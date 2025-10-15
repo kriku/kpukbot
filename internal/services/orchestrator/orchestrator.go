@@ -10,6 +10,7 @@ import (
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
+	"github.com/kriku/kpukbot/internal/services/users"
 )
 
 // OrchestratorService coordinates the entire message processing pipeline
@@ -17,6 +18,7 @@ type OrchestratorService struct {
 	classifier     *threading.ClassifierService
 	analyzer       *response.AnalyzerService
 	messagesRepo   messagesRepo.MessagesRepository
+	usersService   *users.UsersService
 	telegramClient telegram.MessengerClient
 	logger         *slog.Logger
 }
@@ -25,6 +27,7 @@ func NewOrchestratorService(
 	classifier *threading.ClassifierService,
 	analyzer *response.AnalyzerService,
 	messagesRepo messagesRepo.MessagesRepository,
+	usersService *users.UsersService,
 	telegramClient telegram.MessengerClient,
 	logger *slog.Logger,
 ) *OrchestratorService {
@@ -32,6 +35,7 @@ func NewOrchestratorService(
 		classifier:     classifier,
 		analyzer:       analyzer,
 		messagesRepo:   messagesRepo,
+		usersService:   usersService,
 		telegramClient: telegramClient,
 		logger:         logger.With("service", "orchestrator"),
 	}
@@ -54,6 +58,12 @@ func (s *OrchestratorService) ProcessMessage(ctx context.Context, message *model
 		return fmt.Errorf("failed to save message: %w", err)
 	}
 	s.logger.DebugContext(ctx, "Message saved")
+
+	// Step 1.5: Track/update user information
+	if err := s.trackUserFromMessage(ctx, message); err != nil {
+		s.logger.WarnContext(ctx, "Failed to track user", "user_id", message.UserID, "error", err)
+		// Don't fail the entire process if user tracking fails
+	}
 
 	// Step 2: Classify message into a thread
 	threadMatch, err := s.classifier.ClassifyMessage(ctx, message)
@@ -122,4 +132,26 @@ func (s *OrchestratorService) getThreadMessages(ctx context.Context, thread *mod
 	}
 
 	return messages, nil
+}
+
+// trackUserFromMessage extracts user information from the message and updates the user repository
+func (s *OrchestratorService) trackUserFromMessage(ctx context.Context, message *models.Message) error {
+	// Create or update user based on message information
+	err := s.usersService.CreateOrUpdateUser(
+		ctx,
+		message.UserID,
+		message.ChatID,
+		message.FirstName,
+		message.LastName,
+		message.Username,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create or update user: %w", err)
+	}
+
+	s.logger.DebugContext(ctx, "User information tracked",
+		"user_id", message.UserID,
+		"username", message.Username)
+
+	return nil
 }

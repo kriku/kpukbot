@@ -18,9 +18,11 @@ import (
 	"github.com/kriku/kpukbot/internal/logger"
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
 	threadsRepo "github.com/kriku/kpukbot/internal/repository/threads"
+	usersRepo "github.com/kriku/kpukbot/internal/repository/users"
 	"github.com/kriku/kpukbot/internal/services/orchestrator"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
+	"github.com/kriku/kpukbot/internal/services/users"
 	"github.com/kriku/kpukbot/internal/strategies"
 )
 
@@ -43,6 +45,16 @@ func ProvideMessagesRepository(client *firestore.Client) messagesRepo.MessagesRe
 // ProvideThreadsRepository provides a threads repository
 func ProvideThreadsRepository(client *firestore.Client) threadsRepo.ThreadsRepository {
 	return threadsRepo.NewFirestoreThreadsRepository(client)
+}
+
+// ProvideUsersRepository provides a users repository
+func ProvideUsersRepository(client *firestore.Client) usersRepo.UsersRepository {
+	return usersRepo.NewFirestoreUsersRepository(client)
+}
+
+// ProvideUsersService provides the users service
+func ProvideUsersService(repository usersRepo.UsersRepository, logger *slog.Logger) *users.UsersService {
+	return users.NewUsersService(repository, logger)
 }
 
 // ProvideStrategies provides all response strategies
@@ -76,10 +88,11 @@ func ProvideOrchestratorService(
 	classifier *threading.ClassifierService,
 	analyzer *response.AnalyzerService,
 	messagesRepository messagesRepo.MessagesRepository,
+	usersService *users.UsersService,
 	logger *slog.Logger,
 ) *orchestrator.OrchestratorService {
 	// Note: TelegramClient will be set later in NewApp to avoid circular dependency
-	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, nil, logger)
+	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, nil, logger)
 }
 
 // ProvideOrchestratorHandler provides the orchestrator handler
@@ -106,11 +119,13 @@ var baseSet = wire.NewSet(
 	// Repositories
 	ProvideMessagesRepository,
 	ProvideThreadsRepository,
+	ProvideUsersRepository,
 
 	// Services
 	ProvideStrategies,
 	ProvideClassifierService,
 	ProvideAnalyzerService,
+	ProvideUsersService,
 	ProvideOrchestratorService,
 
 	// Handler

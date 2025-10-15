@@ -55,7 +55,7 @@ func (g *GeminiClient) GenerateContent(ctx context.Context, prompt string, confi
 		}
 	}
 
-	resp, err := g.client.Models.GenerateContent(ctx, "gemini-2.0-flash", contents, config)
+	resp, err := g.client.Models.GenerateContent(ctx, "gemini-2.5-flash", contents, config)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "Failed to generate content", "error", err)
 		return "", fmt.Errorf("failed to generate content: %w", err)
