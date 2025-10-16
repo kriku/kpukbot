@@ -101,6 +101,36 @@ func GeneralResponsePrompt(thread *models.Thread, messages []*models.Message, ne
 	return sb.String()
 }
 
+// IntroductionAnalysisPrompt generates a prompt for analyzing if a message is an introduction
+func IntroductionAnalysisPrompt(message *models.Message) string {
+	var sb strings.Builder
+
+	sb.WriteString("Analyze whether the following message is a user introduction. Return a JSON object with the following structure:\n")
+	sb.WriteString("{\n")
+	sb.WriteString("  \"is_introduction\": true/false,\n")
+	sb.WriteString("  \"confidence\": 0.0-1.0,\n")
+	sb.WriteString("  \"reasoning\": \"Brief explanation of your analysis\"\n")
+	sb.WriteString("}\n\n")
+
+	sb.WriteString("Guidelines for detecting introductions:\n")
+	sb.WriteString("- User shares personal information about themselves\n")
+	sb.WriteString("- User mentions their name, profession, interests, or hobbies\n")
+	sb.WriteString("- User uses phrases like 'I am', 'My name is', 'I like', 'I enjoy', etc.\n")
+	sb.WriteString("- User expresses intent to introduce themselves or share about themselves\n")
+	sb.WriteString("- User greets while sharing personal details\n\n")
+
+	sb.WriteString("NOT introductions:\n")
+	sb.WriteString("- Simple greetings without personal information\n")
+	sb.WriteString("- Questions or casual conversation\n")
+	sb.WriteString("- Comments about external topics\n")
+	sb.WriteString("- Responses to others without self-disclosure\n\n")
+
+	sb.WriteString(fmt.Sprintf("Message from %s:\n", message.FirstName))
+	sb.WriteString(fmt.Sprintf("\"%s\"\n", message.Text))
+
+	return sb.String()
+}
+
 // UserInformationExtractionPrompt generates a prompt for extracting user information from introduction messages
 func UserInformationExtractionPrompt(message *models.Message) string {
 	var sb strings.Builder
@@ -165,4 +195,14 @@ func ParseUserInformationResponse(jsonResponse string) (*models.UserInformation,
 		return nil, fmt.Errorf("failed to parse user information JSON: %w", err)
 	}
 	return &userInfo, nil
+}
+
+// ParseIntroductionAnalysisResponse parses the JSON response from introduction analysis
+func ParseIntroductionAnalysisResponse(jsonResponse string) (*models.IntroductionAnalysisResult, error) {
+	var result models.IntroductionAnalysisResult
+	err := json.Unmarshal([]byte(jsonResponse), &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse introduction analysis JSON: %w", err)
+	}
+	return &result, nil
 }

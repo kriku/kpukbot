@@ -21,3 +21,10 @@ type UserInformation struct {
 	Interests []string `json:"interests"`
 	Hobbies   []string `json:"hobbies"`
 }
+
+// IntroductionAnalysisResult represents the result of LLM analysis for introduction detection
+type IntroductionAnalysisResult struct {
+	IsIntroduction bool    `json:"is_introduction"`
+	Confidence     float64 `json:"confidence"`
+	Reasoning      string  `json:"reasoning"`
+}

@@ -60,6 +60,9 @@ func (m *MockClient) generateMockResponse(prompt string) string {
 	// Check for specific patterns and return appropriate mock responses
 	// Order matters - more specific patterns should come first
 	switch {
+	case strings.Contains(promptLower, "analyze whether the following message is a user introduction"):
+		return m.mockIntroductionAnalysisResponse(prompt)
+
 	case strings.Contains(promptLower, "analyze the following message and determine"):
 		return m.mockThreadClassificationResponse()
 
@@ -75,30 +78,6 @@ func (m *MockClient) generateMockResponse(prompt string) string {
 	default:
 		return m.mockGeneralResponse()
 	}
-}
-
-// Mock responses for recent context analysis
-func (m *MockClient) mockRecentContextAnalysisResponse() string {
-	return `{
-		"should_respond": true,
-		"confidence": 0.75,
-		"reasoning": "The conversation shows active engagement and the latest message appears to be seeking input or continuing a discussion.",
-		"conversation_type": "discussion"
-	}`
-}
-
-// Mock responses for recent context strategy selection
-func (m *MockClient) mockRecentContextStrategySelectionResponse() string {
-	return `{
-		"approach": "conversational",
-		"tone": "friendly",
-		"focus": "addressing the user's question while maintaining the conversational flow"
-	}`
-}
-
-// Mock responses for recent context response generation
-func (m *MockClient) mockRecentContextResponse() string {
-	return "This is a mock response generated with the recent context strategy. The response takes into account the conversational flow and aims to be helpful while maintaining an appropriate tone."
 }
 
 // Mock responses for thread classification
@@ -148,4 +127,52 @@ Your request has been processed locally without making an actual LLM API call. T
 The actual response would contain more contextual and relevant information based on your specific prompt.
 
 Mock timestamp: %s`, "2025-10-13T00:00:00Z")
+}
+
+// mockIntroductionAnalysisResponse generates appropriate mock responses for introduction analysis
+func (m *MockClient) mockIntroductionAnalysisResponse(prompt string) string {
+	promptLower := strings.ToLower(prompt)
+
+	// Simple heuristic to determine if the message looks like an introduction
+	// This mimics what the real LLM would do
+	isIntroduction := false
+	confidence := 0.2 // Default low confidence
+	reasoning := "Does not contain typical introduction patterns"
+
+	// Look for introduction indicators in the prompt (the message content)
+	introPatterns := []string{
+		"hello everyone! i'm", "hi, i'm", "my name is",
+		"i am", "i'm", "about me", "introduce myself",
+		"i like", "i love", "i enjoy", "i work", "passionate about",
+		"nice to meet", "pleased to meet",
+	}
+
+	for _, pattern := range introPatterns {
+		if strings.Contains(promptLower, pattern) {
+			isIntroduction = true
+			confidence = 0.8
+			reasoning = "Contains self-referential language and personal information sharing typical of introductions"
+			break
+		}
+	}
+
+	// Simple greeting without personal info
+	if strings.Contains(promptLower, "hi there!") || strings.Contains(promptLower, "hello!") {
+		isIntroduction = false
+		confidence = 0.1
+		reasoning = "Simple greeting without personal information or self-disclosure"
+	}
+
+	// Questions or general conversation
+	if strings.Contains(promptLower, "what") || strings.Contains(promptLower, "how") || strings.Contains(promptLower, "weather") {
+		isIntroduction = false
+		confidence = 0.05
+		reasoning = "Appears to be a question or general conversation rather than an introduction"
+	}
+
+	return fmt.Sprintf(`{
+		"is_introduction": %t,
+		"confidence": %.2f,
+		"reasoning": "%s"
+	}`, isIntroduction, confidence, reasoning)
 }

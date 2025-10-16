@@ -3,8 +3,6 @@ package strategies
 import (
 	"context"
 	"log/slog"
-	"regexp"
-	"strings"
 
 	"github.com/kriku/kpukbot/internal/clients/gemini"
 	"github.com/kriku/kpukbot/internal/constants"
@@ -36,58 +34,63 @@ func (s *IntroductionStrategy) Priority() int {
 	return 80 // High priority for introductions
 }
 
-// IntroductionKeywords contains patterns that suggest an introduction
-var IntroductionKeywords = []string{
-	"hello", "hi", "hey", "greetings",
-	"i am", "i'm", "my name is", "call me",
-	"about me", "introduce myself", "introduction",
-	"i like", "i love", "i enjoy", "i'm into",
-	"my hobbies", "my interests", "passionate about",
-	"i work", "i study", "i do", "profession",
-	"nice to meet", "pleased to meet", "good to meet",
-}
-
 func (s *IntroductionStrategy) ShouldRespond(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message) (bool, float64, error) {
-	text := strings.ToLower(newMessage.Text)
+	// Use LLM to analyze if the message is an introduction
+	prompt := prompts.IntroductionAnalysisPrompt(newMessage)
 
-	// Check for introduction keywords
-	keywordScore := 0.0
-	for _, keyword := range IntroductionKeywords {
-		if strings.Contains(text, keyword) {
-			keywordScore += 0.2
-		}
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: genai.NewContentFromText("Analyze the message to determine if it's a user introduction. Be precise and return valid JSON.", genai.RoleModel),
+		ResponseMIMEType:  "application/json",
+		ResponseSchema: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"is_introduction": {
+					Type: genai.TypeBoolean,
+				},
+				"confidence": {
+					Type:    genai.TypeNumber,
+					Minimum: &constants.MinimumConfidenceScore,
+					Maximum: &constants.MaximumConfidenceScore,
+				},
+				"reasoning": {
+					Type:      genai.TypeString,
+					MaxLength: &constants.MaxAnalysisLength,
+				},
+			},
+			Required: []string{"is_introduction", "confidence", "reasoning"},
+		},
 	}
 
-	// Higher score for first-person statements
-	firstPersonPatterns := []string{
-		`\bi\s+(am|'m)\s+`,
-		`\bmy\s+(name|hobbies|interests)\s+`,
-		`\bi\s+(like|love|enjoy|work|study|do)\s+`,
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to analyze introduction intent", "error", err)
+		// Fallback to false on error
+		return false, 0.0, err
 	}
 
-	for _, pattern := range firstPersonPatterns {
-		matched, _ := regexp.MatchString(pattern, text)
-		if matched {
-			keywordScore += 0.3
-		}
+	// Parse the LLM response
+	analysisResult, err := prompts.ParseIntroductionAnalysisResponse(response)
+	if err != nil {
+		s.logger.WarnContext(ctx, "Failed to parse introduction analysis response", "response", response, "error", err)
+		// Fallback to false on parsing error
+		return false, 0.0, nil
 	}
 
-	// Bonus for longer messages (introductions tend to be longer)
-	if len(newMessage.Text) > 50 {
-		keywordScore += 0.2
+	// Validate confidence bounds
+	confidence := analysisResult.Confidence
+	if confidence < 0.0 {
+		confidence = 0.0
+	}
+	if confidence > 1.0 {
+		confidence = 1.0
 	}
 
-	// Cap the confidence at 0.95
-	confidence := keywordScore
-	if confidence > 0.95 {
-		confidence = 0.95
-	}
+	shouldRespond := analysisResult.IsIntroduction
 
-	// Consider it an introduction if confidence is 0.4 or above
-	shouldRespond := confidence >= 0.4
-
-	s.logger.InfoContext(ctx, "Introduction detection",
+	s.logger.InfoContext(ctx, "Introduction analysis completed",
+		"is_introduction", analysisResult.IsIntroduction,
 		"confidence", confidence,
+		"reasoning", analysisResult.Reasoning,
 		"should_respond", shouldRespond,
 		"text_length", len(newMessage.Text))
 
