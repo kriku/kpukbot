@@ -43,10 +43,10 @@ func InitApp(ctx context.Context) (App, error) {
 	threadsRepository := ProvideThreadsRepository(firestoreClient)
 	messagesRepository := ProvideMessagesRepository(firestoreClient)
 	classifierService := ProvideClassifierService(client, threadsRepository, messagesRepository, slogLogger)
-	v := ProvideStrategies(client, slogLogger)
-	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
 	usersRepository := ProvideUsersRepository(firestoreClient)
 	usersService := ProvideUsersService(usersRepository, slogLogger)
+	v := ProvideStrategies(client, usersService, slogLogger)
+	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
 	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, usersService, slogLogger)
 	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
 	messengerClient, err := telegram.NewTelegramClient(ctx, configConfig, handlerFunc)
@@ -90,8 +90,8 @@ func ProvideUsersService(repository users.UsersRepository, logger2 *slog.Logger)
 }
 
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewGeneralStrategy(geminiClient, logger2)}
+func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, logger2 *slog.Logger) []strategies.ResponseStrategy {
+	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service

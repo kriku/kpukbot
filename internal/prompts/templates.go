@@ -1,6 +1,7 @@
 package prompts
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -98,4 +99,70 @@ func GeneralResponsePrompt(thread *models.Thread, messages []*models.Message, ne
 	sb.WriteString("Provide a brief, helpful response. Be friendly but professional.")
 
 	return sb.String()
+}
+
+// UserInformationExtractionPrompt generates a prompt for extracting user information from introduction messages
+func UserInformationExtractionPrompt(message *models.Message) string {
+	var sb strings.Builder
+
+	sb.WriteString("Extract user information from the following introduction message. Return a JSON object with the following structure:\n")
+	sb.WriteString("{\n")
+	sb.WriteString("  \"bio\": \"Brief bio or self-description if mentioned\",\n")
+	sb.WriteString("  \"interests\": [\"interest1\", \"interest2\"],\n")
+	sb.WriteString("  \"hobbies\": [\"hobby1\", \"hobby2\"]\n")
+	sb.WriteString("}\n\n")
+
+	sb.WriteString("Rules:\n")
+	sb.WriteString("- Only extract explicitly mentioned information\n")
+	sb.WriteString("- Bio should be 1-2 sentences maximum\n")
+	sb.WriteString("- Interests are topics they're curious about or study\n")
+	sb.WriteString("- Hobbies are activities they do in their free time\n")
+	sb.WriteString("- Use empty string for bio and empty arrays for interests/hobbies if not mentioned\n\n")
+
+	sb.WriteString(fmt.Sprintf("Message from %s %s:\n", message.FirstName, message.LastName))
+	sb.WriteString(fmt.Sprintf("\"%s\"\n", message.Text))
+
+	return sb.String()
+}
+
+// IntroductionConfirmationPrompt generates a prompt for creating confirmation responses
+func IntroductionConfirmationPrompt(message *models.Message, userInfo *models.UserInformation) string {
+	var sb strings.Builder
+
+	sb.WriteString("Generate a warm, friendly confirmation message for a user's introduction. ")
+	sb.WriteString("Acknowledge what they shared and welcome them to the community.\n\n")
+
+	sb.WriteString(fmt.Sprintf("User: %s %s\n", message.FirstName, message.LastName))
+	sb.WriteString(fmt.Sprintf("Original message: \"%s\"\n\n", message.Text))
+
+	if userInfo.Bio != "" {
+		sb.WriteString(fmt.Sprintf("Bio: %s\n", userInfo.Bio))
+	}
+
+	if len(userInfo.Interests) > 0 {
+		sb.WriteString(fmt.Sprintf("Interests: %s\n", strings.Join(userInfo.Interests, ", ")))
+	}
+
+	if len(userInfo.Hobbies) > 0 {
+		sb.WriteString(fmt.Sprintf("Hobbies: %s\n", strings.Join(userInfo.Hobbies, ", ")))
+	}
+
+	sb.WriteString("\nGuidelines:\n")
+	sb.WriteString("- Be warm and welcoming\n")
+	sb.WriteString("- Acknowledge specific interests/hobbies they mentioned\n")
+	sb.WriteString("- Keep it personal but not too lengthy\n")
+	sb.WriteString("- Use their first name\n")
+	sb.WriteString("- Maximum 300 characters\n")
+
+	return sb.String()
+}
+
+// ParseUserInformationResponse parses the JSON response from user information extraction
+func ParseUserInformationResponse(jsonResponse string) (*models.UserInformation, error) {
+	var userInfo models.UserInformation
+	err := json.Unmarshal([]byte(jsonResponse), &userInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse user information JSON: %w", err)
+	}
+	return &userInfo, nil
 }

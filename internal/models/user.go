@@ -14,3 +14,10 @@ type User struct {
 	CreatedAt time.Time `firestore:"created_at"`
 	UpdatedAt time.Time `firestore:"updated_at"`
 }
+
+// UserInformation represents extracted information from user introduction messages
+type UserInformation struct {
+	Bio       string   `json:"bio"`
+	Interests []string `json:"interests"`
+	Hobbies   []string `json:"hobbies"`
+}

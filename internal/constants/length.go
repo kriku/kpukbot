@@ -11,4 +11,8 @@ var (
 
 	MinimumConfidenceScore = float64(0.0)
 	MaximumConfidenceScore = float64(1.0)
+
+	MaxUserBioLength      = int64(300)
+	MaxUserInterestLength = int64(100)
+	MaxUserHobbyLength    = int64(100)
 )

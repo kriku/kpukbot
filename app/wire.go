@@ -58,8 +58,9 @@ func ProvideUsersService(repository usersRepo.UsersRepository, logger *slog.Logg
 }
 
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, logger *slog.Logger) []strategies.ResponseStrategy {
+func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
+		strategies.NewIntroductionStrategy(geminiClient, usersService, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }
