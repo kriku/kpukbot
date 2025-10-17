@@ -30,12 +30,18 @@ func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
 	}
 	defer a.Close()
 
+
 	// Check if this is a custom trigger request
 	if req.Method == "POST" && req.Header.Get("Content-Type") == "application/json" {
 		body, err := io.ReadAll(req.Body)
+
+		a.Logger.InfoContext(ctx, "Handling incoming request", "body", body)
+
 		if err == nil {
 			var triggerReq TriggerRequest
+
 			if json.Unmarshal(body, &triggerReq) == nil && triggerReq.Trigger == "question" {
+				a.Logger.InfoContext(ctx, "Trigger question")
 				handleQuestionTrigger(ctx, res, req, a)
 				return
 			}
