@@ -62,6 +62,9 @@ func (s *IntroductionStrategy) ShouldRespond(ctx context.Context, thread *models
 	}
 
 	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+
+	s.logger.InfoContext(ctx, "Analyze introduction should respond strategy", "response", response)
+
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to analyze introduction intent", "error", err)
 		// Fallback to false on error

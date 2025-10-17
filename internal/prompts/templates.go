@@ -78,7 +78,7 @@ func ResponseAnalysisPrompt(thread *models.Thread, messages []*models.Message, n
 
 	sb.WriteString("Analyze whether the bot should respond. Consider:\n")
 	sb.WriteString("1. Is there a question that requires an answer?\n")
-	sb.WriteString("2. Is fact-checking needed?\n")
+	sb.WriteString("2. Is user introduced himself?\n")
 
 	return sb.String()
 }
