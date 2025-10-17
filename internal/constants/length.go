@@ -15,4 +15,7 @@ var (
 	MaxUserBioLength      = int64(300)
 	MaxUserInterestLength = int64(100)
 	MaxUserHobbyLength    = int64(100)
+
+	MaxAssessmentFeedbackLength         = int64(4096)
+	MaxAssessmentFollowUpQuestionLength = int64(4096)
 )

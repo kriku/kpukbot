@@ -21,6 +21,7 @@ import (
 	"github.com/kriku/kpukbot/internal/repository/threads"
 	"github.com/kriku/kpukbot/internal/repository/users"
 	chats2 "github.com/kriku/kpukbot/internal/services/chats"
+	messages2 "github.com/kriku/kpukbot/internal/services/messages"
 	"github.com/kriku/kpukbot/internal/services/orchestrator"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
@@ -49,7 +50,8 @@ func InitApp(ctx context.Context) (App, error) {
 	usersService := ProvideUsersService(usersRepository, slogLogger)
 	chatsRepository := ProvideChatsRepository(firestoreClient)
 	chatsService := ProvideChatsService(chatsRepository, slogLogger)
-	v := ProvideStrategies(client, usersService, chatsService, slogLogger)
+	telegramMessagesService := ProvideMessagesService(messagesRepository, slogLogger)
+	v := ProvideStrategies(client, usersService, chatsService, telegramMessagesService, slogLogger)
 	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
 	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, usersService, slogLogger)
 	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
@@ -103,9 +105,14 @@ func ProvideChatsService(repository chats.ChatsRepository, logger2 *slog.Logger)
 	return chats2.NewChatsService(repository, logger2)
 }
 
+// ProvideMessagesService provides the messages service
+func ProvideMessagesService(repository messages.MessagesRepository, logger2 *slog.Logger) *messages2.TelegramMessagesService {
+	return messages2.NewTelegramMessagesService(repository, logger2)
+}
+
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, messagesService *messages2.TelegramMessagesService, logger2 *slog.Logger) []strategies.ResponseStrategy {
+	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger2), strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service
@@ -157,6 +164,7 @@ var baseSet = wire.NewSet(config.NewConfig, logger.NewLogger, NewFirestoreClient
 	ProvideUsersService,
 	ProvideChatsService,
 	ProvideOrchestratorService,
+	ProvideMessagesService,
 
 	ProvideOrchestratorHandler, telegram.NewTelegramClient, NewApp,
 )

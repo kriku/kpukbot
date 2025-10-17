@@ -239,6 +239,105 @@ func QuestionGenerationPrompt(user *models.User) string {
 	return sb.String()
 }
 
+// AssessmentShouldRespondPrompt generates a prompt for determining if assessment strategy should respond
+func AssessmentShouldRespondPrompt(thread *models.Thread, conversationContext string, newMessage *models.Message, user *models.User) string {
+	var sb strings.Builder
+
+	sb.WriteString(`You are an AI assistant that determines whether a user's message should trigger an answer assessment response.
+
+Your task is to analyze the conversation and determine if:
+1. The user appears to be answering a question that was asked by the bot
+2. The response shows engagement and would benefit from constructive feedback
+3. The message is substantial enough to warrant assessment
+
+Context:
+`)
+
+	if thread != nil {
+		sb.WriteString(fmt.Sprintf("Thread Topic: %s\n", thread.Theme))
+		sb.WriteString(fmt.Sprintf("Thread Summary: %s\n", thread.Summary))
+	}
+
+	if user != nil {
+		sb.WriteString(fmt.Sprintf("User: %s %s", user.FirstName, user.LastName))
+		if user.Username != "" {
+			sb.WriteString(fmt.Sprintf(" (@%s)", user.Username))
+		}
+		sb.WriteString("\n")
+
+		if len(user.Interests) > 0 {
+			sb.WriteString(fmt.Sprintf("User Interests: %s\n", strings.Join(user.Interests, ", ")))
+		}
+	}
+
+	sb.WriteString("\nRecent Conversation:\n")
+	sb.WriteString(conversationContext)
+
+	sb.WriteString(`
+Assessment Criteria:
+- should_respond: true if the user is answering a bot question and the response warrants feedback
+- confidence: 0.0-1.0 based on how certain you are this is an answer to assess
+- reason: brief explanation of your decision
+
+Consider responding when:
+- User is clearly answering a question posed by the bot
+- The response shows thought and engagement
+- The message is more than just "yes/no" or very short responses
+- The response relates to personal experiences, opinions, or detailed information
+
+Do NOT respond when:
+- User is asking their own question
+- Message is just a greeting or casual comment
+- Response is too brief or lacks substance for assessment
+- No recent bot question was asked
+- User is having a conversation with other users (not answering bot)
+
+Respond with JSON only:
+{
+  "should_respond": boolean,
+  "confidence": number,
+  "reason": "explanation"
+}`)
+
+	return sb.String()
+}
+
+// AssessmentEvaluationPrompt generates a prompt for assessing user answers
+func AssessmentEvaluationPrompt(user *models.User) string {
+	userContext := ""
+	if user != nil {
+		if len(user.Interests) > 0 {
+			userContext += fmt.Sprintf("User interests: %s. ", strings.Join(user.Interests, ", "))
+		}
+		if len(user.Hobbies) > 0 {
+			userContext += fmt.Sprintf("User hobbies: %s. ", strings.Join(user.Hobbies, ", "))
+		}
+	}
+
+	return fmt.Sprintf(`You are an AI assistant that assesses user responses in a conversational learning context. %s
+
+Your role is to:
+1. Evaluate the quality and depth of the user's answer to the question asked
+2. Provide constructive, encouraging feedback
+3. Determine if a follow-up question would help deepen the conversation
+4. Keep the tone friendly and supportive
+
+Assessment criteria:
+- Score 0.8-1.0: Thoughtful, detailed response that shows engagement
+- Score 0.6-0.7: Good response with some detail but could be deeper
+- Score 0.4-0.5: Basic response, shows understanding but lacks depth
+- Score 0.2-0.3: Minimal response, shows little engagement
+- Score 0.0-0.1: No meaningful response or off-topic
+
+Provide feedback that:
+- Acknowledges what the user shared well
+- Suggests areas for deeper exploration if appropriate
+- Maintains an encouraging tone
+- Is specific to their response
+
+If follow_up_needed is true, provide a thoughtful follow-up question that builds on their answer.`, userContext)
+}
+
 // ParseIntroductionAnalysisResponse parses the JSON response from introduction analysis
 func ParseIntroductionAnalysisResponse(jsonResponse string) (*models.IntroductionAnalysisResult, error) {
 	var result models.IntroductionAnalysisResult

@@ -21,6 +21,7 @@ import (
 	threadsRepo "github.com/kriku/kpukbot/internal/repository/threads"
 	usersRepo "github.com/kriku/kpukbot/internal/repository/users"
 	"github.com/kriku/kpukbot/internal/services/chats"
+	"github.com/kriku/kpukbot/internal/services/messages"
 	"github.com/kriku/kpukbot/internal/services/orchestrator"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
@@ -69,11 +70,17 @@ func ProvideChatsService(repository chatsRepo.ChatsRepository, logger *slog.Logg
 	return chats.NewChatsService(repository, logger)
 }
 
+// ProvideMessagesService provides the messages service
+func ProvideMessagesService(repository messagesRepo.MessagesRepository, logger *slog.Logger) *messages.TelegramMessagesService {
+	return messages.NewTelegramMessagesService(repository, logger)
+}
+
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, logger *slog.Logger) []strategies.ResponseStrategy {
+func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, messagesService *messages.TelegramMessagesService, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
 		strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger),
-		strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, logger),
+		strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger),
+		strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }
@@ -143,6 +150,7 @@ var baseSet = wire.NewSet(
 	ProvideUsersService,
 	ProvideChatsService,
 	ProvideOrchestratorService,
+	ProvideMessagesService,
 
 	// Handler
 	ProvideOrchestratorHandler,

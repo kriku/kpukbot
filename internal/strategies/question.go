@@ -8,23 +8,32 @@ import (
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
 	"github.com/kriku/kpukbot/internal/services/chats"
+	"github.com/kriku/kpukbot/internal/services/messages"
 	"github.com/kriku/kpukbot/internal/services/users"
 	"google.golang.org/genai"
 )
 
 type QuestionStrategy struct {
-	gemini      gemini.Client
-	userService *users.UsersService
-	chatService *chats.ChatsService
-	logger      *slog.Logger
+	gemini         gemini.Client
+	userService    *users.UsersService
+	chatService    *chats.ChatsService
+	messageService *messages.TelegramMessagesService
+	logger         *slog.Logger
 }
 
-func NewQuestionStrategy(gemini gemini.Client, userService *users.UsersService, chatService *chats.ChatsService, logger *slog.Logger) *QuestionStrategy {
+func NewQuestionStrategy(
+	gemini gemini.Client,
+	userService *users.UsersService,
+	chatService *chats.ChatsService,
+	messageService *messages.TelegramMessagesService,
+	logger *slog.Logger,
+) *QuestionStrategy {
 	return &QuestionStrategy{
-		gemini:      gemini,
-		userService: userService,
-		chatService: chatService,
-		logger:      logger.With("strategy", "question"),
+		gemini:         gemini,
+		userService:    userService,
+		chatService:    chatService,
+		messageService: messageService,
+		logger:         logger.With("strategy", "question"),
 	}
 }
 
@@ -113,4 +122,9 @@ func (s *QuestionStrategy) generateQuestionForUser(ctx context.Context, user *mo
 		"hobbies_count", len(user.Hobbies))
 
 	return response, nil
+}
+
+// SaveQuestionAsMessage saves a question as a bot message to maintain conversation history
+func (s *QuestionStrategy) SaveQuestionAsMessage(ctx context.Context, chatID int64, messageID int, questionText string) error {
+	return s.messageService.SaveBotMessage(ctx, chatID, messageID, questionText)
 }

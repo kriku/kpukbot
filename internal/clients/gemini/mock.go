@@ -75,6 +75,9 @@ func (m *MockClient) generateMockResponse(prompt string) string {
 	case strings.Contains(promptLower, "generate a helpful and contextually appropriate response"):
 		return m.mockGeneralResponse()
 
+	case strings.Contains(promptLower, "you are an ai assistant that determines whether a user's message should trigger an answer assessment response"):
+		return m.mockShouldRespondEvaluationResponse(prompt)
+
 	default:
 		return m.mockGeneralResponse()
 	}
@@ -175,4 +178,55 @@ func (m *MockClient) mockIntroductionAnalysisResponse(prompt string) string {
 		"confidence": %.2f,
 		"reasoning": "%s"
 	}`, isIntroduction, confidence, reasoning)
+}
+
+// mockShouldRespondEvaluationResponse generates mock responses for assessment strategy evaluation
+func (m *MockClient) mockShouldRespondEvaluationResponse(prompt string) string {
+	promptLower := strings.ToLower(prompt)
+
+	// Analyze the conversation context to determine if assessment should respond
+	shouldRespond := false
+	confidence := 0.1
+	reason := "No clear question-answer pattern detected"
+
+	// Look for patterns that suggest this is an answer to a bot question
+	if strings.Contains(promptLower, "bot:") && strings.Contains(promptLower, "user:") {
+		// There's a bot-user conversation
+		if strings.Contains(promptLower, "?") {
+			// Bot asked a question
+			shouldRespond = true
+			confidence = 0.85
+			reason = "User appears to be responding to a bot question"
+		}
+	}
+
+	// Look for specific question patterns in the conversation
+	questionPatterns := []string{
+		"what's your favorite", "how do you", "why do you", "when did you",
+		"where do you", "which", "who", "tell me about", "describe", "explain",
+	}
+
+	for _, pattern := range questionPatterns {
+		if strings.Contains(promptLower, pattern) {
+			shouldRespond = true
+			confidence = 0.9
+			reason = "Clear question-answer pattern detected in conversation"
+			break
+		}
+	}
+
+	// If user message is very short, lower confidence
+	if strings.Count(promptLower, " ") < 5 {
+		confidence = confidence * 0.5
+		if confidence < 0.2 {
+			shouldRespond = false
+			reason = "User response too brief to warrant assessment"
+		}
+	}
+
+	return fmt.Sprintf(`{
+		"should_respond": %t,
+		"confidence": %.2f,
+		"reason": "%s"
+	}`, shouldRespond, confidence, reason)
 }
