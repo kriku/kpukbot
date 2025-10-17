@@ -29,6 +29,24 @@ func NewFirestoreChatsRepository(client *firestore.Client) ChatsRepository {
 	}
 }
 
+// Create new chat in Firestore
+func (r *FirestoreRepository) NewChat(ctx context.Context, chatID int64) error {
+	chat := models.Chat{
+		ID:            chatID,
+		UserIDs:       []int64{},
+		QuestionQueue: []models.QueueEntry{},
+		IsActive:      true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	_, err := r.client.Collection(chatsCollection).Doc(fmt.Sprintf("%d", chat.ID)).Set(ctx, chat)
+	if err != nil {
+		return fmt.Errorf("failed to save chat: %w", err)
+	}
+	return nil
+}
+
 // SaveChat saves or updates a chat to Firestore
 func (r *FirestoreRepository) SaveChat(ctx context.Context, chat models.Chat) error {
 	chat.UpdatedAt = time.Now()

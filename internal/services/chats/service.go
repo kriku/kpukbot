@@ -57,6 +57,10 @@ func (s *ChatsService) CreateOrUpdateChat(ctx context.Context, chatID int64, tit
 
 // AddUserToChat adds a user to a chat and optionally to the queue
 func (s *ChatsService) AddUserToChat(ctx context.Context, chatID int64, userID int64, autoEnqueue bool) error {
+
+	if _, err := s.repository.GetChat(ctx, chatID); err != nil {
+		s.repository.NewChat(ctx, chatID)
+	}
 	// Add user to chat
 	err := s.repository.AddUserToChat(ctx, chatID, userID)
 	if err != nil {

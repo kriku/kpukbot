@@ -135,22 +135,16 @@ func IntroductionAnalysisPrompt(message *models.Message) string {
 func UserInformationExtractionPrompt(message *models.Message) string {
 	var sb strings.Builder
 
-	sb.WriteString("Extract user information from the following introduction message. Return a JSON object with the following structure:\n")
-	sb.WriteString("{\n")
-	sb.WriteString("  \"bio\": \"Brief bio or self-description if mentioned\",\n")
-	sb.WriteString("  \"interests\": [\"interest1\", \"interest2\"],\n")
-	sb.WriteString("  \"hobbies\": [\"hobby1\", \"hobby2\"]\n")
-	sb.WriteString("}\n\n")
+	sb.WriteString("Extract user information from the following introduction message.\n")
+	sb.WriteString(fmt.Sprintf("Message from %s %s:\n", message.FirstName, message.LastName))
+	sb.WriteString(fmt.Sprintf("\"%s\"\n\n", message.Text))
 
 	sb.WriteString("Rules:\n")
 	sb.WriteString("- Only extract explicitly mentioned information\n")
 	sb.WriteString("- Bio should be 1-2 sentences maximum\n")
 	sb.WriteString("- Interests are topics they're curious about or study\n")
-	sb.WriteString("- Hobbies are activities they do in their free time\n")
+	sb.WriteString("- Hobbies are activities they do in their free time or if user mentioned it as a hobby\n")
 	sb.WriteString("- Use empty string for bio and empty arrays for interests/hobbies if not mentioned\n\n")
-
-	sb.WriteString(fmt.Sprintf("Message from %s %s:\n", message.FirstName, message.LastName))
-	sb.WriteString(fmt.Sprintf("\"%s\"\n", message.Text))
 
 	return sb.String()
 }

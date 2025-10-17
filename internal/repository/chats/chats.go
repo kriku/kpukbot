@@ -7,6 +7,9 @@ import (
 )
 
 type ChatsRepository interface {
+	// Create a new chat in the repository
+	NewChat(ctx context.Context, chatID int64) error
+
 	// SaveChat saves or updates a chat in the repository
 	SaveChat(ctx context.Context, chat models.Chat) error
 
