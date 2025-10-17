@@ -8,6 +8,7 @@ import (
 	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
+	"github.com/kriku/kpukbot/internal/services/chats"
 	"github.com/kriku/kpukbot/internal/services/users"
 	"google.golang.org/genai"
 )
@@ -15,13 +16,15 @@ import (
 type IntroductionStrategy struct {
 	gemini      gemini.Client
 	userService *users.UsersService
+	chatService *chats.ChatsService
 	logger      *slog.Logger
 }
 
-func NewIntroductionStrategy(gemini gemini.Client, userService *users.UsersService, logger *slog.Logger) *IntroductionStrategy {
+func NewIntroductionStrategy(gemini gemini.Client, userService *users.UsersService, chatService *chats.ChatsService, logger *slog.Logger) *IntroductionStrategy {
 	return &IntroductionStrategy{
 		gemini:      gemini,
 		userService: userService,
+		chatService: chatService,
 		logger:      logger.With("strategy", "introduction"),
 	}
 }
@@ -183,6 +186,24 @@ func (s *IntroductionStrategy) updateUserProfile(ctx context.Context, message *m
 		message.FirstName, message.LastName, message.Username)
 	if err != nil {
 		return err
+	}
+
+	// Add user to chat and question queue
+	err = s.chatService.AddUserToChat(ctx, message.ChatID, message.UserID, false)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to add user to chat", "error", err)
+		// Don't return error - we can still continue with other updates
+	} else {
+		s.logger.InfoContext(ctx, "User added to chat", "chat_id", message.ChatID, "user_id", message.UserID)
+	}
+
+	// Enqueue user at the end of the question queue
+	err = s.chatService.EnqueueUser(ctx, message.ChatID, message.UserID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to enqueue user", "error", err)
+		// Don't return error - user introduction processing should continue
+	} else {
+		s.logger.InfoContext(ctx, "User added to question queue", "chat_id", message.ChatID, "user_id", message.UserID)
 	}
 
 	// Update bio if provided

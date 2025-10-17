@@ -61,7 +61,7 @@ func (s *AnalyzerService) AnalyzeAndRespond(
 				},
 				"suggested_strategy": {
 					Type: genai.TypeString,
-					Enum: []string{"general"},
+					Enum: []string{"general", "introduction"},
 				},
 			},
 		},

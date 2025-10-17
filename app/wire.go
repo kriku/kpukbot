@@ -16,9 +16,11 @@ import (
 	"github.com/kriku/kpukbot/internal/config"
 	"github.com/kriku/kpukbot/internal/handlers"
 	"github.com/kriku/kpukbot/internal/logger"
+	chatsRepo "github.com/kriku/kpukbot/internal/repository/chats"
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
 	threadsRepo "github.com/kriku/kpukbot/internal/repository/threads"
 	usersRepo "github.com/kriku/kpukbot/internal/repository/users"
+	"github.com/kriku/kpukbot/internal/services/chats"
 	"github.com/kriku/kpukbot/internal/services/orchestrator"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
@@ -52,15 +54,25 @@ func ProvideUsersRepository(client *firestore.Client) usersRepo.UsersRepository 
 	return usersRepo.NewFirestoreUsersRepository(client)
 }
 
+// ProvideChatsRepository provides a chats repository
+func ProvideChatsRepository(client *firestore.Client) chatsRepo.ChatsRepository {
+	return chatsRepo.NewFirestoreChatsRepository(client)
+}
+
 // ProvideUsersService provides the users service
 func ProvideUsersService(repository usersRepo.UsersRepository, logger *slog.Logger) *users.UsersService {
 	return users.NewUsersService(repository, logger)
 }
 
+// ProvideChatsService provides the chats service
+func ProvideChatsService(repository chatsRepo.ChatsRepository, logger *slog.Logger) *chats.ChatsService {
+	return chats.NewChatsService(repository, logger)
+}
+
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, logger *slog.Logger) []strategies.ResponseStrategy {
+func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
-		strategies.NewIntroductionStrategy(geminiClient, usersService, logger),
+		strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }
@@ -121,12 +133,14 @@ var baseSet = wire.NewSet(
 	ProvideMessagesRepository,
 	ProvideThreadsRepository,
 	ProvideUsersRepository,
+	ProvideChatsRepository,
 
 	// Services
 	ProvideStrategies,
 	ProvideClassifierService,
 	ProvideAnalyzerService,
 	ProvideUsersService,
+	ProvideChatsService,
 	ProvideOrchestratorService,
 
 	// Handler
