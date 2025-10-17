@@ -57,7 +57,7 @@ func InitApp(ctx context.Context) (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	app := NewApp(slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient)
+	app := NewApp(slogLogger, messengerClient, messagesRepository, orchestratorService, firestoreClient, chatsService, v)
 	return app, nil
 }
 
@@ -105,7 +105,7 @@ func ProvideChatsService(repository chats.ChatsRepository, logger2 *slog.Logger)
 
 // ProvideStrategies provides all response strategies
 func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service

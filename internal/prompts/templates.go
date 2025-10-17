@@ -191,6 +191,54 @@ func ParseUserInformationResponse(jsonResponse string) (*models.UserInformation,
 	return &userInfo, nil
 }
 
+// QuestionGenerationPrompt generates a prompt for creating personalized questions
+func QuestionGenerationPrompt(user *models.User) string {
+	var sb strings.Builder
+
+	sb.WriteString("Generate an engaging, thoughtful question for this user based on their profile:\n\n")
+	sb.WriteString(fmt.Sprintf("User: %s %s", user.FirstName, user.LastName))
+	if user.Username != "" {
+		sb.WriteString(fmt.Sprintf(" (@%s)", user.Username))
+	}
+	sb.WriteString("\n\n")
+
+	if user.Bio != "" {
+		sb.WriteString(fmt.Sprintf("Bio: %s\n\n", user.Bio))
+	}
+
+	if len(user.Interests) > 0 {
+		sb.WriteString("Interests:\n")
+		for _, interest := range user.Interests {
+			sb.WriteString(fmt.Sprintf("- %s\n", interest))
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(user.Hobbies) > 0 {
+		sb.WriteString("Hobbies:\n")
+		for _, hobby := range user.Hobbies {
+			sb.WriteString(fmt.Sprintf("- %s\n", hobby))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("Guidelines for question generation:\n")
+	sb.WriteString("- Ask about something specific from their interests or hobbies\n")
+	sb.WriteString("- Make it personal and engaging\n")
+	sb.WriteString("- Encourage detailed responses or storytelling\n")
+	sb.WriteString("- Keep it conversational, not interview-like\n")
+	sb.WriteString("- Avoid yes/no questions\n")
+	sb.WriteString("- Maximum 300 characters\n\n")
+
+	if len(user.Interests) == 0 && len(user.Hobbies) == 0 && user.Bio == "" {
+		sb.WriteString("Since the user hasn't shared specific interests or hobbies yet, ask a general but engaging question that might help them open up about their passions or experiences.\n\n")
+	}
+
+	sb.WriteString("Generate a single question that would be interesting for this user to answer and for others to read:")
+
+	return sb.String()
+}
+
 // ParseIntroductionAnalysisResponse parses the JSON response from introduction analysis
 func ParseIntroductionAnalysisResponse(jsonResponse string) (*models.IntroductionAnalysisResult, error) {
 	var result models.IntroductionAnalysisResult

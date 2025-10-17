@@ -306,6 +306,16 @@ func (s *ChatsService) GetActiveChats(ctx context.Context) ([]*models.Chat, erro
 	return chats, nil
 }
 
+// GetAllChats returns all chats in the system
+func (s *ChatsService) GetAllChats(ctx context.Context) ([]*models.Chat, error) {
+	chats, err := s.repository.GetAllChats(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all chats: %w", err)
+	}
+
+	return chats, nil
+}
+
 // GetUserChats returns all chats that contain a specific user
 func (s *ChatsService) GetUserChats(ctx context.Context, userID int64) ([]*models.Chat, error) {
 	chats, err := s.repository.GetChatsByUser(ctx, userID)

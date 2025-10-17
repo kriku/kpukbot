@@ -73,6 +73,7 @@ func ProvideChatsService(repository chatsRepo.ChatsRepository, logger *slog.Logg
 func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
 		strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger),
+		strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }

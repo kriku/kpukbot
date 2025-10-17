@@ -16,6 +16,11 @@ type MockChatsRepository struct {
 	mock.Mock
 }
 
+func (m *MockChatsRepository) NewChat(ctx context.Context, chatID int64) error {
+	args := m.Called(ctx, chatID)
+	return args.Error(0)
+}
+
 func (m *MockChatsRepository) SaveChat(ctx context.Context, chat models.Chat) error {
 	args := m.Called(ctx, chat)
 	return args.Error(0)
