@@ -51,9 +51,9 @@ func InitApp(ctx context.Context) (App, error) {
 	chatsRepository := ProvideChatsRepository(firestoreClient)
 	chatsService := ProvideChatsService(chatsRepository, slogLogger)
 	telegramMessagesService := ProvideMessagesService(messagesRepository, slogLogger)
-	v := ProvideStrategies(client, usersService, chatsService, telegramMessagesService, slogLogger)
+	v := ProvideStrategies(client, usersService, chatsService, telegramMessagesService, messagesRepository, slogLogger)
 	analyzerService := ProvideAnalyzerService(client, v, slogLogger)
-	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, usersService, slogLogger)
+	orchestratorService := ProvideOrchestratorService(classifierService, analyzerService, messagesRepository, usersService, chatsService, slogLogger)
 	handlerFunc := ProvideOrchestratorHandler(orchestratorService, slogLogger)
 	messengerClient, err := telegram.NewTelegramClient(ctx, configConfig, handlerFunc)
 	if err != nil {
@@ -111,8 +111,8 @@ func ProvideMessagesService(repository messages.MessagesRepository, logger2 *slo
 }
 
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, messagesService *messages2.TelegramMessagesService, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger2), strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, messagesService *messages2.TelegramMessagesService, messagesRepo messages.MessagesRepository, logger2 *slog.Logger) []strategies.ResponseStrategy {
+	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger2), strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, messagesRepo, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service
@@ -136,10 +136,11 @@ func ProvideOrchestratorService(
 	classifier *threading.ClassifierService,
 	analyzer *response.AnalyzerService,
 	messagesRepository messages.MessagesRepository,
-	usersService *users2.UsersService, logger2 *slog.Logger,
+	usersService *users2.UsersService,
+	chatsService *chats2.ChatsService, logger2 *slog.Logger,
 ) *orchestrator.OrchestratorService {
 
-	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, nil, logger2)
+	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, chatsService, nil, logger2)
 }
 
 // ProvideOrchestratorHandler provides the orchestrator handler

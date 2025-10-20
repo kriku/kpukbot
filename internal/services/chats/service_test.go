@@ -177,10 +177,24 @@ func TestChatsService_MarkQuestionAsked(t *testing.T) {
 	userID := int64(456)
 	questionID := int64(12345)
 
+	// First, we need to mock getting the chat to find the queue entry
+	chat := &models.Chat{
+		ID: chatID,
+		QuestionQueue: []models.QueueEntry{
+			{
+				UserID:      userID,
+				Status:      models.QueueStatusWaiting,
+				QuestionIDs: []int64{},
+			},
+		},
+	}
+	mockRepo.On("GetChat", ctx, chatID).Return(chat, nil)
+
 	mockRepo.On("UpdateQueueEntry", ctx, chatID, mock.MatchedBy(func(entry models.QueueEntry) bool {
 		return entry.UserID == userID &&
 			entry.Status == models.QueueStatusAsking &&
-			entry.QuestionID == questionID &&
+			len(entry.QuestionIDs) == 1 &&
+			entry.QuestionIDs[0] == questionID &&
 			entry.AskedAt != nil
 	})).Return(nil)
 

@@ -76,11 +76,11 @@ func ProvideMessagesService(repository messagesRepo.MessagesRepository, logger *
 }
 
 // ProvideStrategies provides all response strategies
-func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, messagesService *messages.TelegramMessagesService, logger *slog.Logger) []strategies.ResponseStrategy {
+func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersService, chatsService *chats.ChatsService, messagesService *messages.TelegramMessagesService, messagesRepo messagesRepo.MessagesRepository, logger *slog.Logger) []strategies.ResponseStrategy {
 	return []strategies.ResponseStrategy{
 		strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger),
 		strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger),
-		strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, logger),
+		strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, messagesRepo, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }
@@ -110,10 +110,11 @@ func ProvideOrchestratorService(
 	analyzer *response.AnalyzerService,
 	messagesRepository messagesRepo.MessagesRepository,
 	usersService *users.UsersService,
+	chatsService *chats.ChatsService,
 	logger *slog.Logger,
 ) *orchestrator.OrchestratorService {
 	// Note: TelegramClient will be set later in NewApp to avoid circular dependency
-	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, nil, logger)
+	return orchestrator.NewOrchestratorService(classifier, analyzer, messagesRepository, usersService, chatsService, nil, logger)
 }
 
 // ProvideOrchestratorHandler provides the orchestrator handler

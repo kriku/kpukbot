@@ -143,17 +143,67 @@ func (s *ChatsService) GetNextUserInQueue(ctx context.Context, chatID int64) (*m
 	return entry, nil
 }
 
+// AddMessageToQueueEntry adds a message ID to the current queue entry for a user
+func (s *ChatsService) AddMessageToQueueEntry(ctx context.Context, chatID int64, userID int64, messageID int64) error {
+	// Get current chat to find the user's queue entry
+	chat, err := s.repository.GetChat(ctx, chatID)
+	if err != nil {
+		s.logger.Error("Failed to get chat for adding message", "chatID", chatID, "userID", userID, "error", err)
+		return fmt.Errorf("failed to get chat: %w", err)
+	}
+
+	// Find the user's current queue entry
+	var updatedEntry *models.QueueEntry
+	for _, entry := range chat.QuestionQueue {
+		if entry.UserID == userID {
+			// Add message ID to the QuestionIDs array
+			entry.QuestionIDs = append(entry.QuestionIDs, messageID)
+			updatedEntry = &entry
+			break
+		}
+	}
+
+	if updatedEntry == nil {
+		return fmt.Errorf("user %d not found in queue for chat %d", userID, chatID)
+	}
+
+	err = s.repository.UpdateQueueEntry(ctx, chatID, *updatedEntry)
+	if err != nil {
+		s.logger.Error("Failed to add message to queue entry", "chatID", chatID, "userID", userID, "messageID", messageID, "error", err)
+		return fmt.Errorf("failed to add message to queue entry: %w", err)
+	}
+
+	s.logger.Info("Message added to queue entry", "chatID", chatID, "userID", userID, "messageID", messageID)
+	return nil
+}
+
 // MarkQuestionAsked marks a user as currently being asked a question
 func (s *ChatsService) MarkQuestionAsked(ctx context.Context, chatID int64, userID int64, questionID int64) error {
-	entry := models.QueueEntry{
-		UserID:     userID,
-		Status:     models.QueueStatusAsking,
-		QuestionID: questionID,
+	// Get current chat to find the user's queue entry
+	chat, err := s.repository.GetChat(ctx, chatID)
+	if err != nil {
+		s.logger.Error("Failed to get chat for marking question asked", "chatID", chatID, "userID", userID, "error", err)
+		return fmt.Errorf("failed to get chat: %w", err)
 	}
-	now := time.Now()
-	entry.AskedAt = &now
 
-	err := s.repository.UpdateQueueEntry(ctx, chatID, entry)
+	// Find and update the user's queue entry
+	var updatedEntry *models.QueueEntry
+	for _, entry := range chat.QuestionQueue {
+		if entry.UserID == userID {
+			entry.Status = models.QueueStatusAsking
+			entry.QuestionIDs = append(entry.QuestionIDs, questionID)
+			now := time.Now()
+			entry.AskedAt = &now
+			updatedEntry = &entry
+			break
+		}
+	}
+
+	if updatedEntry == nil {
+		return fmt.Errorf("user %d not found in queue for chat %d", userID, chatID)
+	}
+
+	err = s.repository.UpdateQueueEntry(ctx, chatID, *updatedEntry)
 	if err != nil {
 		s.logger.Error("Failed to mark question as asked", "chatID", chatID, "userID", userID, "error", err)
 		return fmt.Errorf("failed to mark question as asked: %w", err)
@@ -359,10 +409,10 @@ func (s *ChatsService) GetUserChats(ctx context.Context, userID int64) ([]*model
 
 // UsersInAskingStatusEntry represents a user currently in asking status
 type UsersInAskingStatusEntry struct {
-	ChatID     int64
-	UserID     int64
-	QuestionID int64
-	AskedAt    *time.Time
+	ChatID      int64
+	UserID      int64
+	QuestionIDs []int64
+	AskedAt     *time.Time
 }
 
 // GetUsersInAskingStatus returns all users currently in 'asking' status across all active chats
@@ -378,10 +428,10 @@ func (s *ChatsService) GetUsersInAskingStatus(ctx context.Context) ([]UsersInAsk
 		for _, queueEntry := range chat.QuestionQueue {
 			if queueEntry.Status == models.QueueStatusAsking {
 				usersInAsking = append(usersInAsking, UsersInAskingStatusEntry{
-					ChatID:     chat.ID,
-					UserID:     queueEntry.UserID,
-					QuestionID: queueEntry.QuestionID,
-					AskedAt:    queueEntry.AskedAt,
+					ChatID:      chat.ID,
+					UserID:      queueEntry.UserID,
+					QuestionIDs: queueEntry.QuestionIDs,
+					AskedAt:     queueEntry.AskedAt,
 				})
 			}
 		}

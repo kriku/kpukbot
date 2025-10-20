@@ -148,14 +148,14 @@ func (s *QuestionStrategy) RephraseQuestionForUser(ctx context.Context, user *mo
 
 // MarkQuestionAsAsked marks a question as asked using the actual message ID
 func (s *QuestionStrategy) MarkQuestionAsAsked(ctx context.Context, chatID int64, userID int64, messageID int) error {
-	// Use message ID directly as question ID
+	// Add message ID to the queue entry
 	questionID := int64(messageID)
-	err := s.chatService.MarkQuestionAsked(ctx, chatID, userID, questionID)
+	err := s.chatService.AddMessageToQueueEntry(ctx, chatID, userID, questionID)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to mark question as asked", "user_id", userID, "message_id", messageID, "error", err)
+		s.logger.ErrorContext(ctx, "Failed to add question message to queue entry", "user_id", userID, "message_id", messageID, "error", err)
 		return err
 	}
-	s.logger.InfoContext(ctx, "Question marked as asked", "user_id", userID, "chat_id", chatID, "message_id", messageID)
+	s.logger.InfoContext(ctx, "Question message added to queue entry", "user_id", userID, "chat_id", chatID, "message_id", messageID)
 	return nil
 }
 

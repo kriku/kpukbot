@@ -175,10 +175,15 @@ func handleRephraseQuestionTrigger(ctx context.Context, res http.ResponseWriter,
 			continue
 		}
 
-		// Get the original question using the stored question ID
-		originalQuestion, err := questionStrategy.GetQuestionByID(ctx, askingEntry.QuestionID)
+		// Get the original question using the first stored question ID
+		if len(askingEntry.QuestionIDs) == 0 {
+			log.Printf("No question IDs found for user %d in chat %d", askingEntry.UserID, askingEntry.ChatID)
+			continue
+		}
+		originalQuestionID := askingEntry.QuestionIDs[0] // First ID should be the original question
+		originalQuestion, err := questionStrategy.GetQuestionByID(ctx, originalQuestionID)
 		if err != nil {
-			log.Printf("Failed to get original question for user %d in chat %d with question ID %d: %v", askingEntry.UserID, askingEntry.ChatID, askingEntry.QuestionID, err)
+			log.Printf("Failed to get original question for user %d in chat %d with question ID %d: %v", askingEntry.UserID, askingEntry.ChatID, originalQuestionID, err)
 			continue
 		}
 

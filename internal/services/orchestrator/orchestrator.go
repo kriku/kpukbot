@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/kriku/kpukbot/internal/clients/telegram"
 	"github.com/kriku/kpukbot/internal/models"
 	messagesRepo "github.com/kriku/kpukbot/internal/repository/messages"
+	"github.com/kriku/kpukbot/internal/services/chats"
 	"github.com/kriku/kpukbot/internal/services/response"
 	"github.com/kriku/kpukbot/internal/services/threading"
 	"github.com/kriku/kpukbot/internal/services/users"
@@ -19,6 +21,7 @@ type OrchestratorService struct {
 	analyzer       *response.AnalyzerService
 	messagesRepo   messagesRepo.MessagesRepository
 	usersService   *users.UsersService
+	chatsService   *chats.ChatsService
 	telegramClient telegram.MessengerClient
 	logger         *slog.Logger
 }
@@ -28,6 +31,7 @@ func NewOrchestratorService(
 	analyzer *response.AnalyzerService,
 	messagesRepo messagesRepo.MessagesRepository,
 	usersService *users.UsersService,
+	chatsService *chats.ChatsService,
 	telegramClient telegram.MessengerClient,
 	logger *slog.Logger,
 ) *OrchestratorService {
@@ -36,6 +40,7 @@ func NewOrchestratorService(
 		analyzer:       analyzer,
 		messagesRepo:   messagesRepo,
 		usersService:   usersService,
+		chatsService:   chatsService,
 		telegramClient: telegramClient,
 		logger:         logger.With("service", "orchestrator"),
 	}
@@ -97,14 +102,10 @@ func (s *OrchestratorService) ProcessMessage(ctx context.Context, message *model
 
 	// Step 6: Send response if generated
 	if responseText != "" {
-		s.logger.InfoContext(ctx, "Sending response", "response_length", len(responseText))
-
-		_, err := s.telegramClient.SendMessage(ctx, message.ChatID, responseText)
+		err := s.sendResponse(ctx, message.ChatID, message.UserID, responseText)
 		if err != nil {
 			return fmt.Errorf("failed to send response: %w", err)
 		}
-
-		s.logger.InfoContext(ctx, "Response sent successfully")
 	} else {
 		s.logger.InfoContext(ctx, "No response needed")
 	}
@@ -152,6 +153,62 @@ func (s *OrchestratorService) trackUserFromMessage(ctx context.Context, message 
 	s.logger.DebugContext(ctx, "User information tracked",
 		"user_id", message.UserID,
 		"username", message.Username)
+
+	return nil
+}
+
+// sendResponse handles sending response text, splitting follow-up questions if needed
+func (s *OrchestratorService) sendResponse(ctx context.Context, chatID int64, userID int64, responseText string) error {
+	// Check if the response contains a follow-up question
+	parts := strings.Split(responseText, "\n---FOLLOW_UP---\n")
+
+	if len(parts) == 2 {
+		// Send main response first
+		mainResponse := strings.TrimSpace(parts[0])
+		if mainResponse != "" {
+			s.logger.InfoContext(ctx, "Sending main response", "response_length", len(mainResponse))
+			_, err := s.telegramClient.SendMessage(ctx, chatID, mainResponse)
+			if err != nil {
+				return fmt.Errorf("failed to send main response: %w", err)
+			}
+			s.logger.InfoContext(ctx, "Main response sent successfully")
+		}
+
+		// Send follow-up question as separate message
+		followUpQuestion := strings.TrimSpace(parts[1])
+		if followUpQuestion != "" {
+			s.logger.InfoContext(ctx, "Sending follow-up question", "question_length", len(followUpQuestion), "user_id", userID)
+			sentMessage, err := s.telegramClient.SendMessage(ctx, chatID, followUpQuestion)
+			if err != nil {
+				return fmt.Errorf("failed to send follow-up question: %w", err)
+			}
+			s.logger.InfoContext(ctx, "Follow-up question sent successfully", "message_id", sentMessage.ID)
+
+			// Add follow-up question message ID to the user's queue entry
+			if s.chatsService != nil && sentMessage != nil {
+				err := s.chatsService.AddMessageToQueueEntry(ctx, chatID, userID, int64(sentMessage.ID))
+				if err != nil {
+					s.logger.WarnContext(ctx, "Failed to add follow-up question to queue entry",
+						"error", err,
+						"message_id", sentMessage.ID,
+						"user_id", userID)
+					// Don't fail the response - the follow-up was sent successfully
+				} else {
+					s.logger.InfoContext(ctx, "Follow-up question added to queue entry",
+						"message_id", sentMessage.ID,
+						"user_id", userID)
+				}
+			}
+		}
+	} else {
+		// Send as single message
+		s.logger.InfoContext(ctx, "Sending response", "response_length", len(responseText))
+		_, err := s.telegramClient.SendMessage(ctx, chatID, responseText)
+		if err != nil {
+			return fmt.Errorf("failed to send response: %w", err)
+		}
+		s.logger.InfoContext(ctx, "Response sent successfully")
+	}
 
 	return nil
 }

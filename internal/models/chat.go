@@ -17,13 +17,13 @@ type Chat struct {
 
 // QueueEntry represents a user's position and state in the question queue
 type QueueEntry struct {
-	UserID     int64      `firestore:"user_id"`
-	Position   int        `firestore:"position"`    // Position in queue (0-based)
-	EnqueuedAt time.Time  `firestore:"enqueued_at"` // When user was added to queue
-	Status     string     `firestore:"status"`      // waiting, asking, completed, skipped
-	QuestionID int64      `firestore:"question_id"` // ID of the current/last question asked
-	AskedAt    *time.Time `firestore:"asked_at"`    // When question was asked (nil if not asked yet)
-	AnsweredAt *time.Time `firestore:"answered_at"` // When user answered (nil if not answered yet)
+	UserID      int64      `firestore:"user_id"`
+	Position    int        `firestore:"position"`     // Position in queue (0-based)
+	EnqueuedAt  time.Time  `firestore:"enqueued_at"`  // When user was added to queue
+	Status      string     `firestore:"status"`       // waiting, asking, completed, skipped
+	QuestionIDs []int64    `firestore:"question_ids"` // IDs of all questions and answers in this session
+	AskedAt     *time.Time `firestore:"asked_at"`     // When question was asked (nil if not asked yet)
+	AnsweredAt  *time.Time `firestore:"answered_at"`  // When user answered (nil if not answered yet)
 }
 
 // QueueStatus represents possible queue entry statuses
