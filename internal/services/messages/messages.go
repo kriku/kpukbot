@@ -77,3 +77,21 @@ func (s *TelegramMessagesService) SaveBotMessage(ctx context.Context, chatID int
 	s.logger.DebugContext(ctx, "Bot message saved successfully", "message_id", message.ID)
 	return nil
 }
+
+// GetMessageByID retrieves a single message by its ID
+func (s *TelegramMessagesService) GetMessageByID(ctx context.Context, messageID int) (*models.Message, error) {
+	message, err := s.repo.GetMessageByID(ctx, messageID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to get message by ID",
+			"error", err,
+			"message_id", messageID,
+		)
+		return nil, err
+	}
+
+	s.logger.DebugContext(ctx, "Retrieved message by ID",
+		"message_id", messageID,
+		"text_length", len(message.Text))
+
+	return message, nil
+}

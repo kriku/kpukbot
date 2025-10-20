@@ -2,6 +2,7 @@ package strategies
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/kriku/kpukbot/internal/clients/gemini"
@@ -90,14 +91,6 @@ func (s *QuestionStrategy) AskQuestionToUser(ctx context.Context, chatID int64) 
 		return "", 0, err
 	}
 
-	// Mark the question as asked for tracking
-	questionID := "q_" + string(rune(queueEntry.UserID)) + "_" + string(rune(chatID))
-	err = s.chatService.MarkQuestionAsked(ctx, chatID, queueEntry.UserID, questionID)
-	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to mark question as asked", "user_id", queueEntry.UserID, "error", err)
-		// Don't return error - question can still be asked
-	}
-
 	return question, queueEntry.UserID, nil
 }
 
@@ -127,4 +120,66 @@ func (s *QuestionStrategy) generateQuestionForUser(ctx context.Context, user *mo
 // SaveQuestionAsMessage saves a question as a bot message to maintain conversation history
 func (s *QuestionStrategy) SaveQuestionAsMessage(ctx context.Context, chatID int64, messageID int, questionText string) error {
 	return s.messageService.SaveBotMessage(ctx, chatID, messageID, questionText)
+}
+
+// RephraseQuestionForUser rephrases an existing question for a user to make it more engaging
+func (s *QuestionStrategy) RephraseQuestionForUser(ctx context.Context, user *models.User, originalQuestion string) (string, error) {
+	prompt := prompts.QuestionRephrasePrompt(user, originalQuestion)
+
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: genai.NewContentFromText("Rephrase the existing question to be more engaging and include a user mention. Keep the core intent but make it sound fresh and encouraging. Maximum 400 characters.", genai.RoleModel),
+		ResponseMIMEType:  "text/plain",
+	}
+
+	response, err := s.gemini.GenerateContent(ctx, prompt, config)
+	if err != nil {
+		return "", err
+	}
+
+	s.logger.InfoContext(ctx, "Generated rephrased question for user",
+		"user_id", user.ID,
+		"original_length", len(originalQuestion),
+		"rephrased_length", len(response),
+		"interests_count", len(user.Interests),
+		"hobbies_count", len(user.Hobbies))
+
+	return response, nil
+}
+
+// MarkQuestionAsAsked marks a question as asked using the actual message ID
+func (s *QuestionStrategy) MarkQuestionAsAsked(ctx context.Context, chatID int64, userID int64, messageID int) error {
+	// Use message ID directly as question ID
+	questionID := int64(messageID)
+	err := s.chatService.MarkQuestionAsked(ctx, chatID, userID, questionID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to mark question as asked", "user_id", userID, "message_id", messageID, "error", err)
+		return err
+	}
+	s.logger.InfoContext(ctx, "Question marked as asked", "user_id", userID, "chat_id", chatID, "message_id", messageID)
+	return nil
+}
+
+// GetQuestionByID retrieves the original question text using the stored question ID
+func (s *QuestionStrategy) GetQuestionByID(ctx context.Context, questionID int64) (string, error) {
+	// Question ID is directly the message ID
+	messageID := int(questionID)
+
+	// Get the message from the database
+	message, err := s.messageService.GetMessageByID(ctx, messageID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to get message by ID", "message_id", messageID, "error", err)
+		return "", fmt.Errorf("failed to get message: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "Retrieved question by ID",
+		"question_id", questionID,
+		"message_id", messageID,
+		"text_length", len(message.Text))
+
+	return message.Text, nil
+}
+
+// GetUser exposes the user service method for external access
+func (s *QuestionStrategy) GetUser(ctx context.Context, userID int64) (*models.User, error) {
+	return s.userService.GetUser(ctx, userID)
 }

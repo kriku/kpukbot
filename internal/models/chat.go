@@ -21,7 +21,7 @@ type QueueEntry struct {
 	Position   int        `firestore:"position"`    // Position in queue (0-based)
 	EnqueuedAt time.Time  `firestore:"enqueued_at"` // When user was added to queue
 	Status     string     `firestore:"status"`      // waiting, asking, completed, skipped
-	QuestionID string     `firestore:"question_id"` // ID of the current/last question asked
+	QuestionID int64      `firestore:"question_id"` // ID of the current/last question asked
 	AskedAt    *time.Time `firestore:"asked_at"`    // When question was asked (nil if not asked yet)
 	AnsweredAt *time.Time `firestore:"answered_at"` // When user answered (nil if not answered yet)
 }

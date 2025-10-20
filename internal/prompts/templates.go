@@ -239,6 +239,55 @@ func QuestionGenerationPrompt(user *models.User) string {
 	return sb.String()
 }
 
+// QuestionRephrasePrompt generates a prompt for rephrasing existing questions with additional context
+func QuestionRephrasePrompt(user *models.User, originalQuestion string) string {
+	var sb strings.Builder
+
+	sb.WriteString("You need to rephrase an existing question to make it more engaging, clearer, or provide additional context. The user hasn't responded to the original question yet.\n\n")
+
+	sb.WriteString(fmt.Sprintf("User: %s %s", user.FirstName, user.LastName))
+	if user.Username != "" {
+		sb.WriteString(fmt.Sprintf(" (@%s)", user.Username))
+	}
+	sb.WriteString("\n\n")
+
+	if user.Bio != "" {
+		sb.WriteString(fmt.Sprintf("Bio: %s\n\n", user.Bio))
+	}
+
+	if len(user.Interests) > 0 {
+		sb.WriteString("Interests:\n")
+		for _, interest := range user.Interests {
+			sb.WriteString(fmt.Sprintf("- %s\n", interest))
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(user.Hobbies) > 0 {
+		sb.WriteString("Hobbies:\n")
+		for _, hobby := range user.Hobbies {
+			sb.WriteString(fmt.Sprintf("- %s\n", hobby))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(fmt.Sprintf("Original question: %s\n\n", originalQuestion))
+
+	sb.WriteString("Guidelines for rephrasing:\n")
+	sb.WriteString("- Keep the core intent and topic of the original question\n")
+	sb.WriteString("- Add more context or background to make it more engaging\n")
+	sb.WriteString("- Make it sound fresh and different from the original\n")
+	sb.WriteString("- You can add examples or scenarios to clarify\n")
+	sb.WriteString("- Start with mentioning the user (@username) to get their attention\n")
+	sb.WriteString("- Keep it conversational and friendly\n")
+	sb.WriteString("- Maximum 400 characters including the mention\n")
+	sb.WriteString("- Encourage detailed responses or storytelling\n\n")
+
+	sb.WriteString("Generate a rephrased version that will encourage the user to respond:")
+
+	return sb.String()
+}
+
 // AssessmentShouldRespondPrompt generates a prompt for determining if assessment strategy should respond
 func AssessmentShouldRespondPrompt(thread *models.Thread, conversationContext string, newMessage *models.Message, user *models.User, isBeingAsked bool) string {
 	var sb strings.Builder

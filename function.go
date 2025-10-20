@@ -39,10 +39,17 @@ func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
 		if err == nil {
 			var triggerReq TriggerRequest
 
-			if json.Unmarshal(body, &triggerReq) == nil && triggerReq.Trigger == "question" {
-				a.Logger.InfoContext(ctx, "Trigger question")
-				handleQuestionTrigger(ctx, res, req, a)
-				return
+			if json.Unmarshal(body, &triggerReq) == nil {
+				switch triggerReq.Trigger {
+				case "question":
+					a.Logger.InfoContext(ctx, "Trigger question")
+					handleQuestionTrigger(ctx, res, req, a)
+					return
+				case "rephrase-question":
+					a.Logger.InfoContext(ctx, "Trigger rephrase question")
+					handleRephraseQuestionTrigger(ctx, res, req, a)
+					return
+				}
 			}
 		}
 		// Reset body for telegram webhook handling
@@ -102,7 +109,7 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 				questionsAsked++
 				log.Printf("Asked question to user %d in chat %d", userID, chat.ID)
 
-				// Save the question to the database
+				// Save the question to the database and mark as asked with message ID
 				if sentMessage != nil {
 					err = questionStrategy.SaveQuestionAsMessage(ctx, chat.ID, sentMessage.ID, question)
 					if err != nil {
@@ -110,6 +117,13 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 						// Don't fail the entire process if saving fails
 					} else {
 						log.Printf("Saved question to database with message ID %d", sentMessage.ID)
+					}
+
+					// Mark question as asked with the actual message ID
+					err = questionStrategy.MarkQuestionAsAsked(ctx, chat.ID, userID, sentMessage.ID)
+					if err != nil {
+						log.Printf("Failed to mark question as asked for user %d in chat %d: %v", userID, chat.ID, err)
+						// Don't fail the entire process if marking fails
 					}
 				}
 			}
@@ -122,6 +136,93 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 		"status":          "success",
 		"questions_asked": questionsAsked,
 		"chats_processed": len(chats),
+	})
+}
+
+// handleRephraseQuestionTrigger handles the rephrase-question trigger request
+func handleRephraseQuestionTrigger(ctx context.Context, res http.ResponseWriter, _ *http.Request, a app.App) {
+	log.Printf("Processing rephrase question trigger request")
+
+	// Find the question strategy
+	questionStrategy := findQuestionStrategy(a)
+	if questionStrategy == nil {
+		log.Printf("Question strategy not found")
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte("question strategy not found"))
+		return
+	}
+
+	// Get all users currently in asking status
+	usersInAsking, err := a.ChatsService.GetUsersInAskingStatus(ctx)
+	if err != nil {
+		log.Printf("Failed to get users in asking status: %v", err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte("failed to get users in asking status"))
+		return
+	}
+
+	questionsRephrased := 0
+	for _, askingEntry := range usersInAsking {
+		// Get user details through the question strategy
+		user, err := questionStrategy.GetUser(ctx, askingEntry.UserID)
+		if err != nil {
+			log.Printf("Failed to get user %d: %v", askingEntry.UserID, err)
+			continue
+		}
+
+		if user == nil {
+			log.Printf("User %d not found", askingEntry.UserID)
+			continue
+		}
+
+		// Get the original question using the stored question ID
+		originalQuestion, err := questionStrategy.GetQuestionByID(ctx, askingEntry.QuestionID)
+		if err != nil {
+			log.Printf("Failed to get original question for user %d in chat %d with question ID %d: %v", askingEntry.UserID, askingEntry.ChatID, askingEntry.QuestionID, err)
+			continue
+		}
+
+		// Rephrase the question
+		rephrasedQuestion, err := questionStrategy.RephraseQuestionForUser(ctx, user, originalQuestion)
+		if err != nil {
+			log.Printf("Failed to rephrase question for user %d: %v", askingEntry.UserID, err)
+			continue
+		}
+
+		// Send the rephrased question
+		sentMessage, err := a.MessengerClient.SendMessage(ctx, askingEntry.ChatID, rephrasedQuestion)
+		if err != nil {
+			log.Printf("Failed to send rephrased question to user %d in chat %d: %v", askingEntry.UserID, askingEntry.ChatID, err)
+		} else {
+			questionsRephrased++
+			log.Printf("Sent rephrased question to user %d in chat %d", askingEntry.UserID, askingEntry.ChatID)
+
+			// Save the rephrased question to the database
+			if sentMessage != nil {
+				err = questionStrategy.SaveQuestionAsMessage(ctx, askingEntry.ChatID, sentMessage.ID, rephrasedQuestion)
+				if err != nil {
+					log.Printf("Failed to save rephrased question to database for chat %d: %v", askingEntry.ChatID, err)
+					// Don't fail the entire process if saving fails
+				} else {
+					log.Printf("Saved rephrased question to database with message ID %d", sentMessage.ID)
+				}
+
+				// Update the question ID in the queue to point to the new rephrased question
+				err = questionStrategy.MarkQuestionAsAsked(ctx, askingEntry.ChatID, askingEntry.UserID, sentMessage.ID)
+				if err != nil {
+					log.Printf("Failed to update question ID for user %d in chat %d: %v", askingEntry.UserID, askingEntry.ChatID, err)
+					// Don't fail the entire process if updating fails
+				}
+			}
+		}
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	json.NewEncoder(res).Encode(map[string]interface{}{
+		"status":              "success",
+		"questions_rephrased": questionsRephrased,
+		"users_in_asking":     len(usersInAsking),
 	})
 }
 

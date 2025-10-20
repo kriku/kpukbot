@@ -94,3 +94,26 @@ func (r *FirestoreRepository) GetMessage(ctx context.Context, id int64) ([]*mode
 
 	return messages, nil
 }
+
+// GetMessageByID retrieves a single message by its ID
+func (r *FirestoreRepository) GetMessageByID(ctx context.Context, messageID int) (*models.Message, error) {
+	iter := r.client.Collection(messagesCollection).
+		Where("id", "==", messageID).
+		Documents(ctx)
+	defer iter.Stop()
+
+	doc, err := iter.Next()
+	if err == iterator.Done {
+		return nil, status.Errorf(codes.NotFound, "message with id %d not found", messageID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get message by ID: %w", err)
+	}
+
+	var message models.Message
+	if err := doc.DataTo(&message); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
+	}
+
+	return &message, nil
+}

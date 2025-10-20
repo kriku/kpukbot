@@ -175,7 +175,7 @@ func TestChatsService_MarkQuestionAsked(t *testing.T) {
 
 	chatID := int64(123)
 	userID := int64(456)
-	questionID := "question_123"
+	questionID := int64(12345)
 
 	mockRepo.On("UpdateQueueEntry", ctx, chatID, mock.MatchedBy(func(entry models.QueueEntry) bool {
 		return entry.UserID == userID &&

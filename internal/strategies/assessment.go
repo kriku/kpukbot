@@ -138,9 +138,9 @@ func (s *AssessmentStrategy) GenerateResponse(ctx context.Context, thread *model
 		if assessment.Score >= 0.6 && !assessment.FollowUpNeeded {
 			err := s.chatsService.MarkQuestionAnswered(ctx, thread.ChatID, newMessage.UserID)
 			if err != nil {
-				s.logger.ErrorContext(ctx, "Failed to mark question as completed", 
-					"error", err, 
-					"chat_id", thread.ChatID, 
+				s.logger.ErrorContext(ctx, "Failed to mark question as completed",
+					"error", err,
+					"chat_id", thread.ChatID,
 					"user_id", newMessage.UserID)
 				// Don't return error - assessment response should still be sent
 			} else {

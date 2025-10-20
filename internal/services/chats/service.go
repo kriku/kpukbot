@@ -144,7 +144,7 @@ func (s *ChatsService) GetNextUserInQueue(ctx context.Context, chatID int64) (*m
 }
 
 // MarkQuestionAsked marks a user as currently being asked a question
-func (s *ChatsService) MarkQuestionAsked(ctx context.Context, chatID int64, userID int64, questionID string) error {
+func (s *ChatsService) MarkQuestionAsked(ctx context.Context, chatID int64, userID int64, questionID int64) error {
 	entry := models.QueueEntry{
 		UserID:     userID,
 		Status:     models.QueueStatusAsking,
@@ -334,4 +334,41 @@ func (s *ChatsService) GetUserChats(ctx context.Context, userID int64) ([]*model
 	}
 
 	return chats, nil
+}
+
+// UsersInAskingStatusEntry represents a user currently in asking status
+type UsersInAskingStatusEntry struct {
+	ChatID     int64
+	UserID     int64
+	QuestionID int64
+	AskedAt    *time.Time
+}
+
+// GetUsersInAskingStatus returns all users currently in 'asking' status across all active chats
+func (s *ChatsService) GetUsersInAskingStatus(ctx context.Context) ([]UsersInAskingStatusEntry, error) {
+	chats, err := s.GetActiveChats(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active chats: %w", err)
+	}
+
+	var usersInAsking []UsersInAskingStatusEntry
+
+	for _, chat := range chats {
+		for _, queueEntry := range chat.QuestionQueue {
+			if queueEntry.Status == models.QueueStatusAsking {
+				usersInAsking = append(usersInAsking, UsersInAskingStatusEntry{
+					ChatID:     chat.ID,
+					UserID:     queueEntry.UserID,
+					QuestionID: queueEntry.QuestionID,
+					AskedAt:    queueEntry.AskedAt,
+				})
+			}
+		}
+	}
+
+	s.logger.InfoContext(ctx, "Found users in asking status",
+		"count", len(usersInAsking),
+		"chats_checked", len(chats))
+
+	return usersInAsking, nil
 }
