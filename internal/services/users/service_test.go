@@ -164,3 +164,75 @@ func TestUsersService_GetUserSummary(t *testing.T) {
 
 	mockRepo.AssertExpectations(t)
 }
+
+func TestUsersService_AddPreviousQuestion(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockUsersRepository)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	service := NewUsersService(mockRepo, logger)
+
+	userID := int64(123)
+	questionText := "What's your favorite programming language and why?"
+	messageID := int64(456)
+
+	// Mock existing user
+	existingUser := &models.User{
+		ID:                userID,
+		FirstName:         "John",
+		LastName:          "Doe",
+		PreviousQuestions: []models.PreviousQuestion{},
+	}
+
+	// Expect to get existing user
+	mockRepo.On("GetUser", ctx, userID).Return(existingUser, nil).Once()
+
+	// Expect to save user with new question added
+	mockRepo.On("SaveUser", ctx, mock.MatchedBy(func(user models.User) bool {
+		return user.ID == userID &&
+			len(user.PreviousQuestions) == 1 &&
+			user.PreviousQuestions[0].QuestionText == questionText &&
+			user.PreviousQuestions[0].MessageID == messageID
+	})).Return(nil).Once()
+
+	err := service.AddPreviousQuestion(ctx, userID, questionText, messageID)
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestUsersService_GetPreviousQuestions(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockUsersRepository)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	service := NewUsersService(mockRepo, logger)
+
+	userID := int64(123)
+
+	// Mock user with previous questions
+	previousQuestions := []models.PreviousQuestion{
+		{
+			QuestionText: "What's your favorite hobby?",
+			MessageID:    100,
+		},
+		{
+			QuestionText: "Tell us about your interests",
+			MessageID:    200,
+		},
+	}
+
+	user := &models.User{
+		ID:                userID,
+		PreviousQuestions: previousQuestions,
+	}
+
+	mockRepo.On("GetUser", ctx, userID).Return(user, nil).Once()
+
+	questions, err := service.GetPreviousQuestions(ctx, userID)
+
+	assert.NoError(t, err)
+	assert.Len(t, questions, 2)
+	assert.Equal(t, "What's your favorite hobby?", questions[0].QuestionText)
+	assert.Equal(t, "Tell us about your interests", questions[1].QuestionText)
+
+	mockRepo.AssertExpectations(t)
+}

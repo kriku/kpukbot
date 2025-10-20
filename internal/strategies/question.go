@@ -99,7 +99,7 @@ func (s *QuestionStrategy) generateQuestionForUser(ctx context.Context, user *mo
 	prompt := prompts.QuestionGenerationPrompt(user)
 
 	config := &genai.GenerateContentConfig{
-		SystemInstruction: genai.NewContentFromText("Generate an engaging, thoughtful question based on the user's interests and hobbies. Keep it conversational and interesting. Maximum 300 characters.", genai.RoleModel),
+		SystemInstruction: genai.NewContentFromText("Generate an engaging, thoughtful question based on the user's interests and hobbies. Keep it conversational and interesting. NEVER repeat or rephrase previously asked questions - create completely fresh, unique questions that explore different aspects. Maximum 300 characters.", genai.RoleModel),
 		ResponseMIMEType:  "text/plain",
 	}
 
@@ -156,6 +156,27 @@ func (s *QuestionStrategy) MarkQuestionAsAsked(ctx context.Context, chatID int64
 		return err
 	}
 	s.logger.InfoContext(ctx, "Question marked as asked", "user_id", userID, "chat_id", chatID, "message_id", messageID)
+	return nil
+}
+
+// MarkQuestionAsAskedWithText marks a question as asked and saves it to user's previous questions
+func (s *QuestionStrategy) MarkQuestionAsAskedWithText(ctx context.Context, chatID int64, userID int64, messageID int, questionText string) error {
+	// First mark the question as asked in the chat queue
+	err := s.MarkQuestionAsAsked(ctx, chatID, userID, messageID)
+	if err != nil {
+		return err
+	}
+
+	// Then save the question text to the user's previous questions
+	err = s.userService.AddPreviousQuestion(ctx, userID, questionText, int64(messageID))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to save question to user history", "user_id", userID, "message_id", messageID, "error", err)
+		// Don't return error - the question was already marked as asked in the queue
+		// Just log the issue
+	} else {
+		s.logger.InfoContext(ctx, "Question saved to user history", "user_id", userID, "message_id", messageID)
+	}
+
 	return nil
 }
 

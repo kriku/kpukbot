@@ -119,8 +119,8 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 						log.Printf("Saved question to database with message ID %d", sentMessage.ID)
 					}
 
-					// Mark question as asked with the actual message ID
-					err = questionStrategy.MarkQuestionAsAsked(ctx, chat.ID, userID, sentMessage.ID)
+					// Mark question as asked and save to user history
+					err = questionStrategy.MarkQuestionAsAskedWithText(ctx, chat.ID, userID, sentMessage.ID, question)
 					if err != nil {
 						log.Printf("Failed to mark question as asked for user %d in chat %d: %v", userID, chat.ID, err)
 						// Don't fail the entire process if marking fails
@@ -207,8 +207,8 @@ func handleRephraseQuestionTrigger(ctx context.Context, res http.ResponseWriter,
 					log.Printf("Saved rephrased question to database with message ID %d", sentMessage.ID)
 				}
 
-				// Update the question ID in the queue to point to the new rephrased question
-				err = questionStrategy.MarkQuestionAsAsked(ctx, askingEntry.ChatID, askingEntry.UserID, sentMessage.ID)
+				// Update the question ID in the queue and save rephrased question to user history
+				err = questionStrategy.MarkQuestionAsAskedWithText(ctx, askingEntry.ChatID, askingEntry.UserID, sentMessage.ID, rephrasedQuestion)
 				if err != nil {
 					log.Printf("Failed to update question ID for user %d in chat %d: %v", askingEntry.UserID, askingEntry.ChatID, err)
 					// Don't fail the entire process if updating fails

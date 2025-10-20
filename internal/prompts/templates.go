@@ -222,12 +222,25 @@ func QuestionGenerationPrompt(user *models.User) string {
 		sb.WriteString("\n")
 	}
 
+	if len(user.PreviousQuestions) > 0 {
+		sb.WriteString("IMPORTANT - Previously Asked Questions (DO NOT repeat these):\n")
+		for i, prevQ := range user.PreviousQuestions {
+			if i >= 10 { // Limit to last 10 questions to keep prompt manageable
+				break
+			}
+			sb.WriteString(fmt.Sprintf("- %s\n", prevQ.QuestionText))
+		}
+		sb.WriteString("\n")
+	}
+
 	sb.WriteString("Guidelines for question generation:\n")
 	sb.WriteString("- Ask about something specific from their interests or hobbies\n")
 	sb.WriteString("- Make it personal and engaging\n")
 	sb.WriteString("- Encourage detailed responses or storytelling\n")
 	sb.WriteString("- Keep it conversational, not interview-like\n")
 	sb.WriteString("- Avoid yes/no questions\n")
+	sb.WriteString("- DO NOT repeat or rephrase any previously asked questions\n")
+	sb.WriteString("- Create fresh, unique questions that explore different aspects\n")
 	sb.WriteString("- Maximum 300 characters\n\n")
 
 	if len(user.Interests) == 0 && len(user.Hobbies) == 0 && user.Bio == "" {

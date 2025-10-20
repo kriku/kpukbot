@@ -136,15 +136,15 @@ func (s *AssessmentStrategy) GenerateResponse(ctx context.Context, thread *model
 	if s.chatsService != nil && thread != nil {
 		// Mark as completed if score is decent (>= 0.6) and no follow-up is needed
 		if assessment.Score >= 0.6 && !assessment.FollowUpNeeded {
-			err := s.chatsService.MarkQuestionAnswered(ctx, thread.ChatID, newMessage.UserID)
+			err := s.chatsService.MarkQuestionAnsweredAndReEnqueue(ctx, thread.ChatID, newMessage.UserID)
 			if err != nil {
-				s.logger.ErrorContext(ctx, "Failed to mark question as completed",
+				s.logger.ErrorContext(ctx, "Failed to mark question as completed and re-enqueue",
 					"error", err,
 					"chat_id", thread.ChatID,
 					"user_id", newMessage.UserID)
 				// Don't return error - assessment response should still be sent
 			} else {
-				s.logger.InfoContext(ctx, "Question marked as completed",
+				s.logger.InfoContext(ctx, "Question marked as completed and user re-enqueued",
 					"chat_id", thread.ChatID,
 					"user_id", newMessage.UserID,
 					"score", assessment.Score)

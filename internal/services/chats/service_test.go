@@ -189,3 +189,47 @@ func TestChatsService_MarkQuestionAsked(t *testing.T) {
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 }
+
+func TestChatsService_MarkQuestionAnsweredAndReEnqueue(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockChatsRepository)
+	logger := slog.Default()
+	service := NewChatsService(mockRepo, logger)
+
+	chatID := int64(123)
+	userID := int64(456)
+
+	// Mock chat with user in asking status
+	mockChat := &models.Chat{
+		ID: chatID,
+		QuestionQueue: []models.QueueEntry{
+			{
+				UserID: userID,
+				Status: models.QueueStatusAsking,
+			},
+		},
+	}
+
+	// Mock chat settings for re-enqueue
+	settings := &models.ChatSettings{
+		ChatID:               chatID,
+		EnableQuestionRounds: true,
+	}
+
+	// Expect calls for MarkQuestionAnswered
+	mockRepo.On("GetChat", ctx, chatID).Return(mockChat, nil).Once()
+	mockRepo.On("UpdateQueueEntry", ctx, chatID, mock.MatchedBy(func(entry models.QueueEntry) bool {
+		return entry.UserID == userID &&
+			entry.Status == models.QueueStatusCompleted &&
+			entry.AnsweredAt != nil
+	})).Return(nil).Once()
+
+	// Expect calls for EnqueueUser (re-enqueue)
+	mockRepo.On("GetChatSettings", ctx, chatID).Return(settings, nil).Once()
+	mockRepo.On("AddToQueue", ctx, chatID, userID).Return(nil).Once()
+
+	err := service.MarkQuestionAnsweredAndReEnqueue(ctx, chatID, userID)
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}

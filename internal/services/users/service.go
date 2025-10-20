@@ -44,6 +44,7 @@ func (s *UsersService) CreateOrUpdateUser(ctx context.Context, userID int64, cha
 		user.Bio = existingUser.Bio
 		user.Interests = existingUser.Interests
 		user.Hobbies = existingUser.Hobbies
+		user.PreviousQuestions = existingUser.PreviousQuestions
 		user.CreatedAt = existingUser.CreatedAt
 	}
 
@@ -199,4 +200,51 @@ func (s *UsersService) GetUserSummary(ctx context.Context, userID int64) (string
 	}
 
 	return summary.String(), nil
+}
+
+// AddPreviousQuestion adds a question to the user's previous questions list
+func (s *UsersService) AddPreviousQuestion(ctx context.Context, userID int64, questionText string, messageID int64) error {
+	// Get current user
+	user, err := s.repository.GetUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// Add new question to the list
+	newQuestion := models.PreviousQuestion{
+		QuestionText: questionText,
+		AskedAt:      time.Now(),
+		MessageID:    messageID,
+	}
+
+	user.PreviousQuestions = append(user.PreviousQuestions, newQuestion)
+	user.UpdatedAt = time.Now()
+
+	// Save the updated user
+	err = s.repository.SaveUser(ctx, *user)
+	if err != nil {
+		s.logger.Error("Failed to save previous question", "user_id", userID, "error", err)
+		return fmt.Errorf("failed to save previous question: %w", err)
+	}
+
+	s.logger.Info("Previous question added", "user_id", userID, "question_length", len(questionText))
+	return nil
+}
+
+// GetPreviousQuestions returns the list of previous questions asked to a user
+func (s *UsersService) GetPreviousQuestions(ctx context.Context, userID int64) ([]models.PreviousQuestion, error) {
+	user, err := s.repository.GetUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if user == nil {
+		return []models.PreviousQuestion{}, nil
+	}
+
+	return user.PreviousQuestions, nil
 }

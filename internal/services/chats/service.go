@@ -199,6 +199,27 @@ func (s *ChatsService) MarkQuestionAnswered(ctx context.Context, chatID int64, u
 	return nil
 }
 
+// MarkQuestionAnsweredAndReEnqueue marks a user's question as answered and re-enqueues them for the next round
+func (s *ChatsService) MarkQuestionAnsweredAndReEnqueue(ctx context.Context, chatID int64, userID int64) error {
+	// First mark the question as answered
+	err := s.MarkQuestionAnswered(ctx, chatID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to mark question as answered: %w", err)
+	}
+
+	// Then re-enqueue the user at the end of the queue
+	err = s.EnqueueUser(ctx, chatID, userID)
+	if err != nil {
+		s.logger.Error("Failed to re-enqueue user after answering", "chatID", chatID, "userID", userID, "error", err)
+		// Don't return error - the question was already marked as answered
+		// Log the issue but continue
+	} else {
+		s.logger.Info("User re-enqueued after answering question", "chatID", chatID, "userID", userID)
+	}
+
+	return nil
+}
+
 // SkipUser marks a user as skipped for this round
 func (s *ChatsService) SkipUser(ctx context.Context, chatID int64, userID int64, reason string) error {
 	// Get current entry to preserve existing data
