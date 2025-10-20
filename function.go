@@ -30,7 +30,6 @@ func HandleTelegramWebhook(res http.ResponseWriter, req *http.Request) {
 	}
 	defer a.Close()
 
-
 	// Check if this is a custom trigger request
 	if req.Method == "POST" && req.Header.Get("Content-Type") == "application/json" {
 		body, err := io.ReadAll(req.Body)
@@ -96,12 +95,23 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 
 		if userID > 0 && question != "" {
 			// Send the question to the chat using the messenger client
-			_, err = a.MessengerClient.SendMessage(ctx, chat.ID, question)
+			sentMessage, err := a.MessengerClient.SendMessage(ctx, chat.ID, question)
 			if err != nil {
 				log.Printf("Failed to send question to chat %d: %v", chat.ID, err)
 			} else {
 				questionsAsked++
 				log.Printf("Asked question to user %d in chat %d", userID, chat.ID)
+
+				// Save the question to the database
+				if sentMessage != nil {
+					err = questionStrategy.SaveQuestionAsMessage(ctx, chat.ID, sentMessage.ID, question)
+					if err != nil {
+						log.Printf("Failed to save question to database for chat %d: %v", chat.ID, err)
+						// Don't fail the entire process if saving fails
+					} else {
+						log.Printf("Saved question to database with message ID %d", sentMessage.ID)
+					}
+				}
 			}
 		}
 	}
