@@ -240,7 +240,7 @@ func QuestionGenerationPrompt(user *models.User) string {
 }
 
 // AssessmentShouldRespondPrompt generates a prompt for determining if assessment strategy should respond
-func AssessmentShouldRespondPrompt(thread *models.Thread, conversationContext string, newMessage *models.Message, user *models.User) string {
+func AssessmentShouldRespondPrompt(thread *models.Thread, conversationContext string, newMessage *models.Message, user *models.User, isBeingAsked bool) string {
 	var sb strings.Builder
 
 	sb.WriteString(`You are an AI assistant that determines whether a user's message should trigger an answer assessment response.
@@ -270,13 +270,17 @@ Context:
 		}
 	}
 
+	if isBeingAsked {
+		sb.WriteString("IMPORTANT: User is currently in 'asking' status - they are expected to answer a bot question.\n")
+	}
+
 	sb.WriteString("\nRecent Conversation:\n")
 	sb.WriteString(conversationContext)
 
 	sb.WriteString(`
 Assessment Criteria:
 - should_respond: true if the user is answering a bot question and the response warrants feedback
-- confidence: 0.0-1.0 based on how certain you are this is an answer to assess
+- confidence: 0.0-1.0 based on how certain you are this is an answer to assess (higher confidence if user is in asking status)
 - reason: brief explanation of your decision
 
 Consider responding when:

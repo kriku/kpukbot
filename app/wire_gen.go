@@ -112,7 +112,7 @@ func ProvideMessagesService(repository messages.MessagesRepository, logger2 *slo
 
 // ProvideStrategies provides all response strategies
 func ProvideStrategies(geminiClient gemini.Client, usersService *users2.UsersService, chatsService *chats2.ChatsService, messagesService *messages2.TelegramMessagesService, logger2 *slog.Logger) []strategies.ResponseStrategy {
-	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger2), strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
+	return []strategies.ResponseStrategy{strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger2), strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger2), strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, logger2), strategies.NewGeneralStrategy(geminiClient, logger2)}
 }
 
 // ProvideClassifierService provides the classifier service

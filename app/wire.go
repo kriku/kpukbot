@@ -80,7 +80,7 @@ func ProvideStrategies(geminiClient gemini.Client, usersService *users.UsersServ
 	return []strategies.ResponseStrategy{
 		strategies.NewIntroductionStrategy(geminiClient, usersService, chatsService, logger),
 		strategies.NewQuestionStrategy(geminiClient, usersService, chatsService, messagesService, logger),
-		strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, logger),
+		strategies.NewAssessmentStrategy(geminiClient, usersService, messagesService, chatsService, logger),
 		strategies.NewGeneralStrategy(geminiClient, logger),
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/kriku/kpukbot/internal/constants"
 	"github.com/kriku/kpukbot/internal/models"
 	"github.com/kriku/kpukbot/internal/prompts"
+	"github.com/kriku/kpukbot/internal/services/chats"
 	"github.com/kriku/kpukbot/internal/services/messages"
 	"github.com/kriku/kpukbot/internal/services/users"
 	"google.golang.org/genai"
@@ -20,6 +21,7 @@ type AssessmentStrategy struct {
 	gemini         gemini.Client
 	userService    *users.UsersService
 	messageService *messages.TelegramMessagesService
+	chatsService   *chats.ChatsService
 	logger         *slog.Logger
 }
 
@@ -27,12 +29,14 @@ func NewAssessmentStrategy(
 	gemini gemini.Client,
 	userService *users.UsersService,
 	messageService *messages.TelegramMessagesService,
+	chatsService *chats.ChatsService,
 	logger *slog.Logger,
 ) *AssessmentStrategy {
 	return &AssessmentStrategy{
 		gemini:         gemini,
 		userService:    userService,
 		messageService: messageService,
+		chatsService:   chatsService,
 		logger:         logger.With("strategy", "assessment"),
 	}
 }
@@ -67,8 +71,25 @@ func (s *AssessmentStrategy) ShouldRespond(ctx context.Context, thread *models.T
 		}
 	}
 
+	// Check if user is currently being asked a question in the chat queue
+	var isBeingAsked bool
+	if s.chatsService != nil && thread != nil {
+		chat, err := s.chatsService.GetChat(ctx, thread.ChatID)
+		if err == nil && chat != nil {
+			for _, entry := range chat.QuestionQueue {
+				if entry.UserID == newMessage.UserID && entry.Status == models.QueueStatusAsking {
+					isBeingAsked = true
+					s.logger.InfoContext(ctx, "User is currently being asked a question",
+						"user_id", newMessage.UserID,
+						"question_id", entry.QuestionID)
+					break
+				}
+			}
+		}
+	}
+
 	// Use LLM to determine if this message should trigger assessment
-	shouldRespond, confidence, err := s.evaluateShouldRespondWithLLM(ctx, thread, messages, newMessage, user)
+	shouldRespond, confidence, err := s.evaluateShouldRespondWithLLM(ctx, thread, messages, newMessage, user, isBeingAsked)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to evaluate with LLM", "error", err)
 		return false, 0.0, err
@@ -77,7 +98,8 @@ func (s *AssessmentStrategy) ShouldRespond(ctx context.Context, thread *models.T
 	s.logger.InfoContext(ctx, "LLM assessment strategy evaluation complete",
 		"should_respond", shouldRespond,
 		"confidence", confidence,
-		"user_id", newMessage.UserID)
+		"user_id", newMessage.UserID,
+		"is_being_asked", isBeingAsked)
 
 	return shouldRespond, confidence, nil
 }
@@ -107,7 +129,35 @@ func (s *AssessmentStrategy) GenerateResponse(ctx context.Context, thread *model
 	s.logger.InfoContext(ctx, "Generated assessment",
 		"user_id", newMessage.UserID,
 		"assessment_score", assessment.Score,
-		"assessment_feedback", assessment.Feedback)
+		"assessment_feedback", assessment.Feedback,
+		"follow_up_needed", assessment.FollowUpNeeded)
+
+	// Mark question as completed if assessment criteria are met
+	if s.chatsService != nil && thread != nil {
+		// Mark as completed if score is decent (>= 0.6) and no follow-up is needed
+		if assessment.Score >= 0.6 && !assessment.FollowUpNeeded {
+			err := s.chatsService.MarkQuestionAnswered(ctx, thread.ChatID, newMessage.UserID)
+			if err != nil {
+				s.logger.ErrorContext(ctx, "Failed to mark question as completed", 
+					"error", err, 
+					"chat_id", thread.ChatID, 
+					"user_id", newMessage.UserID)
+				// Don't return error - assessment response should still be sent
+			} else {
+				s.logger.InfoContext(ctx, "Question marked as completed",
+					"chat_id", thread.ChatID,
+					"user_id", newMessage.UserID,
+					"score", assessment.Score)
+			}
+		} else {
+			s.logger.InfoContext(ctx, "Question not marked as completed",
+				"chat_id", thread.ChatID,
+				"user_id", newMessage.UserID,
+				"score", assessment.Score,
+				"follow_up_needed", assessment.FollowUpNeeded,
+				"reason", "Score too low or follow-up needed")
+		}
+	}
 
 	// Format the response
 	response := s.formatAssessmentResponse(assessment)
@@ -116,12 +166,12 @@ func (s *AssessmentStrategy) GenerateResponse(ctx context.Context, thread *model
 }
 
 // evaluateShouldRespondWithLLM uses LLM to determine if this message should trigger assessment
-func (s *AssessmentStrategy) evaluateShouldRespondWithLLM(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message, user *models.User) (bool, float64, error) {
+func (s *AssessmentStrategy) evaluateShouldRespondWithLLM(ctx context.Context, thread *models.Thread, messages []*models.Message, newMessage *models.Message, user *models.User, isBeingAsked bool) (bool, float64, error) {
 	// Build conversation context
 	conversationContext := s.buildConversationContext(messages, newMessage)
 
 	// Create evaluation prompt using centralized template
-	prompt := prompts.AssessmentShouldRespondPrompt(thread, conversationContext, newMessage, user)
+	prompt := prompts.AssessmentShouldRespondPrompt(thread, conversationContext, newMessage, user, isBeingAsked)
 
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: genai.NewContentFromText("Analyze the conversation to determine if the user's message should trigger assessment response. Be precise.", genai.RoleModel),
