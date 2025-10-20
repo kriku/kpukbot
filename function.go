@@ -111,7 +111,7 @@ func handleQuestionTrigger(ctx context.Context, res http.ResponseWriter, req *ht
 
 				// Save the question to the database and mark as asked with message ID
 				if sentMessage != nil {
-					err = questionStrategy.SaveQuestionAsMessage(ctx, chat.ID, sentMessage.ID, question)
+					err = questionStrategy.SaveQuestionAsMessage(ctx, chat.ID, userID, sentMessage.ID, question)
 					if err != nil {
 						log.Printf("Failed to save question to database for chat %d: %v", chat.ID, err)
 						// Don't fail the entire process if saving fails
@@ -204,7 +204,7 @@ func handleRephraseQuestionTrigger(ctx context.Context, res http.ResponseWriter,
 
 			// Save the rephrased question to the database
 			if sentMessage != nil {
-				err = questionStrategy.SaveQuestionAsMessage(ctx, askingEntry.ChatID, sentMessage.ID, rephrasedQuestion)
+				err = questionStrategy.SaveQuestionAsMessage(ctx, askingEntry.ChatID, askingEntry.UserID, sentMessage.ID, rephrasedQuestion)
 				if err != nil {
 					log.Printf("Failed to save rephrased question to database for chat %d: %v", askingEntry.ChatID, err)
 					// Don't fail the entire process if saving fails

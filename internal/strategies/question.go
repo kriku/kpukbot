@@ -117,9 +117,24 @@ func (s *QuestionStrategy) generateQuestionForUser(ctx context.Context, user *mo
 	return response, nil
 }
 
-// SaveQuestionAsMessage saves a question as a bot message to maintain conversation history
-func (s *QuestionStrategy) SaveQuestionAsMessage(ctx context.Context, chatID int64, messageID int, questionText string) error {
-	return s.messageService.SaveBotMessage(ctx, chatID, messageID, questionText)
+// SaveQuestionAsMessage saves a question as a bot message to maintain conversation history and adds it to the question queue
+func (s *QuestionStrategy) SaveQuestionAsMessage(ctx context.Context, chatID int64, userID int64, messageID int, questionText string) error {
+	// Save the message to the database
+	err := s.messageService.SaveBotMessage(ctx, chatID, messageID, questionText)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to save bot message", "chat_id", chatID, "message_id", messageID, "error", err)
+		return err
+	}
+
+	// Add the message to the question queue
+	err = s.chatService.AddMessageToQueueEntry(ctx, chatID, userID, int64(messageID))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to add message to queue entry", "chat_id", chatID, "user_id", userID, "message_id", messageID, "error", err)
+		return err
+	}
+
+	s.logger.InfoContext(ctx, "Question saved as message and added to queue", "chat_id", chatID, "user_id", userID, "message_id", messageID)
+	return nil
 }
 
 // RephraseQuestionForUser rephrases an existing question for a user to make it more engaging
